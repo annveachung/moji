@@ -1,13 +1,13 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppHeader } from '@/components/app-header';
 import { FuriganaText } from '@/components/furigana-text';
-import { Card, Icon, IconButton, Pill } from '@/components/ui';
+import { Card, Icon, IconButton, Pill, StampButton } from '@/components/ui';
 import { getShownSentences, getStarredShuffled, recordReview, setWordStarred } from '@/db/queries';
 import type { Sentence, Word } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
@@ -32,14 +32,20 @@ export default function ReviewScreen() {
   const [revealed, setRevealed] = useState(false);
   const [example, setExample] = useState<Sentence | null>(null);
   const [starred, setStarred] = useState(true);
+  const [mode, setMode] = useState<'text' | 'audio'>('text');
+  // Read by startRound without making it re-run (which would restart the round) on a mode switch.
+  const modeRef = useRef(mode);
+  const [answers, setAnswers] = useState({ right: 0, total: 0 });
 
   const current = queue?.[position];
 
   const show = useCallback(
-    async (word: Word | undefined) => {
+    async (word: Word | undefined, currentMode: 'text' | 'audio') => {
       setRevealed(false);
       setStarred(true);
       setExample(word ? ((await getShownSentences(db, word.id))[0] ?? null) : null);
+      // In audio mode the word is played instead of shown.
+      if (word && currentMode === 'audio') speakJapanese(word.reading);
     },
     [db],
   );
@@ -48,7 +54,8 @@ export default function ReviewScreen() {
     const words = await getStarredShuffled(db);
     setQueue(words);
     setPosition(0);
-    await show(words[0]);
+    setAnswers({ right: 0, total: 0 });
+    await show(words[0], modeRef.current);
   }, [db, show]);
 
   // A fresh round each time you open the tab.
@@ -65,7 +72,8 @@ export default function ReviewScreen() {
     const next = !remembered && starred ? [...queue, current] : queue;
     setQueue(next);
     setPosition(position + 1);
-    await show(next[position + 1]);
+    setAnswers((a) => ({ right: a.right + (remembered ? 1 : 0), total: a.total + 1 }));
+    await show(next[position + 1], mode);
   };
 
   const toggleStar = async () => {
@@ -75,13 +83,15 @@ export default function ReviewScreen() {
   };
 
   const remaining = queue ? queue.length - position : 0;
+  const switchMode = (next: 'text' | 'audio') => {
+    setMode(next);
+    modeRef.current = next;
+    if (current && !revealed && next === 'audio') speakJapanese(current.reading);
+  };
 
   return (
     <View className="flex-1 bg-cream">
-      <AppHeader
-        subtitle={t('nav.review')}
-        right={current ? <Pill label={t('review.remaining', { count: remaining })} tone="amber" /> : null}
-      />
+      <AppHeader subtitle={t('nav.review')} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerClassName="w-full max-w-[720px] flex-grow self-center gap-4 p-4">
@@ -93,6 +103,13 @@ export default function ReviewScreen() {
           />
         ) : (
           <>
+            <ModeSwitch mode={mode} onChange={switchMode} />
+            <ProgressPanel
+              done={position}
+              total={queue.length}
+              remaining={remaining}
+              accuracy={answers.total > 0 ? answers.right / answers.total : null}
+            />
             <Pressable
               accessibilityRole="button"
               accessibilityHint={revealed ? undefined : t('review.tapToReveal')}
@@ -101,7 +118,7 @@ export default function ReviewScreen() {
                 setRevealed(true);
                 speakJapanese(current.reading);
               }}
-              className="min-h-[320px] items-center justify-center gap-4 overflow-hidden rounded-card border border-amber/60 bg-cream-light p-6 shadow-sm shadow-sumi/10">
+              className="min-h-[320px] items-center justify-center gap-4 overflow-hidden rounded-[28px] bg-paper p-6 shadow-lg shadow-sumi/10">
               <View className="absolute right-3 top-3">
                 <IconButton
                   icon={starred ? 'star' : 'star-border'}
@@ -112,13 +129,25 @@ export default function ReviewScreen() {
                 />
               </View>
 
-              <FuriganaText
-                markup={current.furigana}
-                size={56}
-                showFurigana={settings.showFurigana}
-                className="font-bold text-sumi"
-                containerClassName="justify-center"
-              />
+              {mode === 'audio' && !revealed ? (
+                <View className="items-center gap-3">
+                  <IconButton
+                    icon="volume-up"
+                    size={88}
+                    label={t('review.playAgain')}
+                    onPress={() => speakJapanese(current.reading)}
+                  />
+                  <Text className="font-display-medium text-[13px] text-sumi-light">{t('review.listenPrompt')}</Text>
+                </View>
+              ) : (
+                <FuriganaText
+                  markup={current.furigana}
+                  size={56}
+                  showFurigana={settings.showFurigana}
+                  className="font-bold text-sumi"
+                  containerClassName="justify-center"
+                />
+              )}
 
               {!revealed ? (
                 <View className="flex-row items-center gap-2 rounded-full border border-dashed border-sumi/30 px-4 py-2">
@@ -142,7 +171,7 @@ export default function ReviewScreen() {
                         onPress={() => speakJapanese(current.reading)}
                       />
                     </View>
-                    <View className="self-stretch rounded-xl border-2 border-amber bg-amber/35 p-4">
+                    <View className="self-stretch rounded-2xl bg-amber/35 p-4">
                       <Text className="text-center text-[22px] font-bold leading-8 text-sumi">
                         {meaningFor(current, settings.meaningLanguage)}
                       </Text>
@@ -155,7 +184,7 @@ export default function ReviewScreen() {
             {revealed && example && (
               <Animated.View entering={FadeIn.delay(100).duration(250)}>
                 <Card>
-                  <Text className="text-[12px] font-bold text-sumi-light">{t('review.example')}</Text>
+                  <Text className="font-display text-[12px] text-amber-deep">{t('review.example')}</Text>
                   <FuriganaText
                     markup={example.ja}
                     size={17}
@@ -172,8 +201,8 @@ export default function ReviewScreen() {
             {revealed && (
               <Animated.View entering={FadeIn.delay(150).duration(250)}>
                 <View className="flex-row gap-3">
-                  <AnswerButton label={t('review.notYet')} icon="replay" tone="quiet" onPress={() => answer(false)} />
-                  <AnswerButton label={t('review.gotIt')} icon="check" tone="amber" onPress={() => answer(true)} />
+                  <StampButton label={t('review.notYet')} icon="replay" tone="quiet" className="flex-1" onPress={() => answer(false)} />
+                  <StampButton label={t('review.gotIt')} icon="check" tone="amber" className="flex-1" onPress={() => answer(true)} />
                 </View>
               </Animated.View>
             )}
@@ -181,30 +210,6 @@ export default function ReviewScreen() {
         )}
       </ScrollView>
     </View>
-  );
-}
-
-function AnswerButton({
-  label,
-  icon,
-  tone,
-  onPress,
-}: {
-  label: string;
-  icon: 'replay' | 'check';
-  tone: 'quiet' | 'amber';
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:scale-95 ${
-        tone === 'amber' ? 'border border-sumi/20 bg-amber' : 'border border-sumi/25 bg-cream-light'
-      }`}>
-      <Icon name={icon} size={20} />
-      <Text className="text-[16px] font-bold text-sumi">{label}</Text>
-    </Pressable>
   );
 }
 
@@ -231,21 +236,73 @@ function RoundEnd({
         {finished ? t('review.doneBody', { count: reviewed }) : t('review.emptyBody')}
       </Text>
       <View className="mt-2 flex-row gap-2">
-        <Pressable
-          accessibilityRole="button"
-          onPress={onLibrary}
-          className="rounded-xl border border-sumi/25 px-4 py-3 active:bg-cream-dark">
-          <Text className="text-[14px] font-bold text-sumi">{t('review.goLibrary')}</Text>
-        </Pressable>
-        {finished && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onAgain}
-            className="rounded-xl border border-sumi/20 bg-amber px-4 py-3 active:bg-amber-hover">
-            <Text className="text-[14px] font-bold text-sumi">{t('review.again')}</Text>
-          </Pressable>
-        )}
+        <StampButton label={t('review.goLibrary')} tone="quiet" onPress={onLibrary} />
+        {finished && <StampButton label={t('review.again')} icon="replay" tone="amber" onPress={onAgain} />}
       </View>
     </Card>
+  );
+}
+
+function ModeSwitch({ mode, onChange }: { mode: 'text' | 'audio'; onChange: (mode: 'text' | 'audio') => void }) {
+  const { t } = useTranslation();
+  const options = [
+    { value: 'text' as const, icon: 'translate' as const, label: t('review.modeText') },
+    { value: 'audio' as const, icon: 'headphones' as const, label: t('review.modeAudio') },
+  ];
+  return (
+    <View className="flex-row rounded-full bg-cream-dark/60 p-1">
+      {options.map((option) => {
+        const selected = mode === option.value;
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(option.value)}
+            className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-full py-2 ${
+              selected ? 'bg-paper shadow-sm shadow-sumi/10' : ''
+            }`}>
+            <Icon name={option.icon} size={16} color={selected ? colors.sumi.DEFAULT : colors.sumi.muted} />
+            <Text className={`font-display-semibold text-[13px] ${selected ? 'text-sumi' : 'text-sumi-muted'}`}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** "7 / 20", a progress bar, words left, and how many you got right this round. */
+function ProgressPanel({
+  done,
+  total,
+  remaining,
+  accuracy,
+}: {
+  done: number;
+  total: number;
+  remaining: number;
+  accuracy: number | null;
+}) {
+  const { t } = useTranslation();
+  const progress = total > 0 ? done / total : 0;
+  return (
+    <View className="gap-2 rounded-2xl bg-paper p-3.5 shadow-sm shadow-sumi/10">
+      <View className="flex-row items-center justify-between">
+        <Text className="font-display text-[18px] text-sumi">
+          {done} <Text className="font-display-medium text-[14px] text-sumi-light">/ {total}</Text>
+        </Text>
+        <View className="flex-row items-center gap-2">
+          <Pill label={t('review.remaining', { count: remaining })} />
+          {accuracy !== null && (
+            <Pill label={t('review.accuracy', { percent: Math.round(accuracy * 100) })} icon="verified" tone="amber" />
+          )}
+        </View>
+      </View>
+      <View className="h-2.5 overflow-hidden rounded-full bg-cream-dark/70">
+        <View className="h-full rounded-full bg-amber" style={{ width: `${Math.round(progress * 100)}%` }} />
+      </View>
+    </View>
   );
 }

@@ -70,7 +70,7 @@ export default function SettingsScreen() {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="min-h-[44px] flex-row items-center justify-between gap-3">
-      <Text className="flex-1 text-[15px] font-semibold text-sumi">{label}</Text>
+      <Text className="flex-1 font-display-semibold text-[15px] text-sumi">{label}</Text>
       {children}
     </View>
   );
@@ -86,7 +86,7 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <View className="flex-row rounded-full border border-sumi/15 bg-cream p-0.5">
+    <View className="flex-row rounded-full bg-cream p-0.5">
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -95,8 +95,8 @@ function Segmented<T extends string>({
             accessibilityRole="button"
             accessibilityState={{ selected }}
             onPress={() => onChange(option.value)}
-            className={`rounded-full px-3 py-1.5 ${selected ? 'bg-amber' : ''}`}>
-            <Text className={`text-[13px] ${selected ? 'font-bold text-sumi' : 'text-sumi-muted'}`}>
+            className={`rounded-full px-3 py-1.5 ${selected ? 'bg-sumi' : ''}`}>
+            <Text className={`text-[13px] ${selected ? 'font-bold text-amber' : 'text-sumi-muted'}`}>
               {option.label}
             </Text>
           </Pressable>

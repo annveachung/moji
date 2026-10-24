@@ -26,7 +26,7 @@ export function AppHeader({
   return (
     <View
       style={{ paddingTop: insets.top }}
-      className="border-b border-sumi/10 bg-cream">
+      className="bg-cream">
       <View className="h-14 flex-row items-center justify-between gap-2 px-4">
         <View className="flex-1 flex-row items-center gap-2">
           {back && (
@@ -39,12 +39,12 @@ export function AppHeader({
               <Icon name="arrow-back-ios-new" size={22} />
             </Pressable>
           )}
-          <View className="h-8 w-8 items-center justify-center rounded-lg bg-sumi">
-            <Text className="text-[17px] font-bold text-amber">文</Text>
-          </View>
           <View className="flex-1">
-            <Text className="font-display text-[19px] leading-6 text-sumi">moji</Text>
-            <Text numberOfLines={1} className="text-[11px] text-sumi-light">
+            <View className="flex-row items-baseline gap-1.5">
+              <Text className="font-display text-[20px] leading-6 text-sumi">moji</Text>
+              <Text className="text-[12px] font-bold text-amber-deep">文字</Text>
+            </View>
+            <Text numberOfLines={1} className="font-display-medium text-[12px] text-sumi-light">
               {subtitle}
             </Text>
           </View>

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { FuriganaText } from '@/components/furigana-text';
-import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, type IconName } from '@/components/ui';
+import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, type IconName } from '@/components/ui';
 import {
   countUnseenSentences,
   deleteWord,
@@ -145,21 +145,10 @@ export default function WordDetailScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled">
         {/* 1. The word itself */}
-        <View className="overflow-hidden rounded-card border border-amber/60 bg-cream-light p-5 shadow-sm shadow-sumi/10">
-          <View className="absolute inset-x-0 top-0 h-1.5 flex-row">
-            <View className="flex-1 bg-amber" />
-            <View className="flex-1 bg-sumi" />
-            <View className="flex-1 bg-amber" />
-          </View>
-
-          <View className="mt-1 flex-row items-center justify-between gap-2">
+        <View className="rounded-[28px] bg-paper p-5 shadow-md shadow-sumi/10">
+          <View className="flex-row items-center justify-between gap-2">
             <View className="flex-1 flex-row flex-wrap gap-1.5">
-              <View className="-rotate-2">
-                <Pill
-                  label={word.jlpt ? `印 ${t('jlpt.level', { level: word.jlpt })}` : t('jlpt.none')}
-                  tone="amber"
-                />
-              </View>
+              <Pill label={word.jlpt ? t('jlpt.level', { level: word.jlpt }) : t('jlpt.none')} tone="amber" />
               {word.topic && <Pill label={t(`topic.${word.topic}`)} />}
             </View>
             <View className="flex-row items-center gap-1.5">
@@ -192,25 +181,26 @@ export default function WordDetailScreen() {
               containerClassName="justify-center"
             />
             {settings.showRomaji && (
-              <View className="rounded-full border border-amber/60 bg-cream px-3.5 py-0.5">
-                <Text className="text-[14px] font-semibold text-sumi">[ {toRomaji(word.reading)} ]</Text>
-              </View>
+              <Text className="font-display-medium text-[15px] tracking-widest text-sumi-light">
+                {toRomaji(word.reading)}
+              </Text>
             )}
             <Pill label={t(`pos.${word.pos}`)} tone="outline" />
           </View>
 
-          <View className="flex-row items-center justify-between rounded-xl border border-amber/50 bg-cream p-2.5">
+          <View className="flex-row items-center justify-between rounded-2xl bg-cream/70 p-2.5">
             <View className="flex-row items-center gap-2.5">
               <IconButton
                 icon="volume-up"
+                tone="sumi"
                 label={t('word.listen')}
                 onPress={() => speakJapanese(word.reading, speed)}
               />
-              <Text className="text-[14px] font-bold text-sumi">{t('word.listen')}</Text>
+              <Text className="font-display-semibold text-[14px] text-sumi">{t('word.listen')}</Text>
             </View>
             <View
               accessibilityLabel={t('word.speed')}
-              className="flex-row gap-1 rounded-full border border-amber/50 bg-cream-light p-0.5">
+              className="flex-row gap-1 rounded-full bg-paper p-0.5">
               {[1, 0.7].map((value) => (
                 <Pressable
                   key={value}
@@ -218,7 +208,7 @@ export default function WordDetailScreen() {
                   accessibilityState={{ selected: speed === value }}
                   onPress={() => setSpeed(value)}
                   className={`rounded-full px-2.5 py-1 ${speed === value ? 'bg-amber' : ''}`}>
-                  <Text className={`text-[12px] ${speed === value ? 'font-bold text-sumi' : 'text-sumi-muted'}`}>
+                  <Text className={`font-display-semibold text-[12px] ${speed === value ? 'text-sumi' : 'text-sumi-muted'}`}>
                     {value.toFixed(1)}x
                   </Text>
                 </Pressable>
@@ -230,20 +220,19 @@ export default function WordDetailScreen() {
         {/* 2. Meaning, in one language at a time */}
         <Card>
           <SectionHeader
-            icon="menu-book"
             title={t('word.meaningTitle')}
             right={
               <Pressable
                 accessibilityRole="button"
                 onPress={() => updateSettings({ meaningLanguage: zh ? 'en' : 'zh-TW' })}
-                className="flex-row items-center gap-1 rounded-full border border-sumi/20 bg-cream px-3 py-1 active:bg-amber">
+                className="flex-row items-center gap-1 rounded-full bg-cream px-3 py-1.5 active:bg-amber">
                 <Icon name="translate" size={14} />
-                <Text className="text-[12px] font-bold text-sumi">{zh ? 'EN' : '中文'}</Text>
+                <Text className="font-display text-[12px] text-sumi">{zh ? 'EN' : '中文'}</Text>
               </Pressable>
             }
           />
-          <View className="rounded-xl border-2 border-amber bg-amber/35 p-3.5">
-            <Text className="mb-1 text-[11px] font-bold tracking-wide text-sumi">
+          <View className="rounded-2xl bg-amber/35 p-4">
+            <Text className="mb-1 font-display text-[11px] tracking-wide text-amber-deep">
               {zh ? '繁體中文' : 'English'}
             </Text>
             <Text className="text-[20px] font-bold leading-7 text-sumi">
@@ -254,29 +243,26 @@ export default function WordDetailScreen() {
 
         {/* 3. Connection to Chinese, and false-friend warnings */}
         {word.zhLinkKind && zhNote && (
-          <View className="gap-3 overflow-hidden rounded-card border-2 border-amber bg-cream-light p-4">
+          <Card className="overflow-hidden">
             <Text className="absolute -bottom-4 -right-2 rotate-12 text-[64px] font-bold text-sumi/5">辨析</Text>
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-2">
-                <View className="h-6 w-6 items-center justify-center rounded-full bg-sumi">
-                  <Text className="text-[12px] font-bold text-amber">辨</Text>
-                </View>
-                <Text className="text-[17px] font-bold text-sumi">{t('word.zhTitle')}</Text>
-              </View>
-              <Pill
-                label={t(`zhLink.${word.zhLinkKind}`)}
-                icon={ZH_LINK_STYLE[word.zhLinkKind].icon}
-                tone={ZH_LINK_STYLE[word.zhLinkKind].tone}
-              />
-            </View>
+            <SectionHeader
+              title={t('word.zhTitle')}
+              accent={word.zhLinkKind === 'false-friend' ? 'shu' : 'amber'}
+              right={
+                <Pill
+                  label={t(`zhLink.${word.zhLinkKind}`)}
+                  icon={ZH_LINK_STYLE[word.zhLinkKind].icon}
+                  tone={ZH_LINK_STYLE[word.zhLinkKind].tone}
+                />
+              }
+            />
             <Text className="text-[14px] leading-6 text-sumi">{zhNote}</Text>
-          </View>
+          </Card>
         )}
 
         {/* 4. Example sentences */}
         <Card>
           <SectionHeader
-            icon="auto-stories"
             title={t('word.examplesTitle')}
             right={
               <Text className="text-[11px] text-sumi-muted">
@@ -286,7 +272,7 @@ export default function WordDetailScreen() {
           />
           {sentences.length === 0 && <EmptyState icon="auto-stories" message={t('word.examplesEmpty')} />}
           {sentences.map((sentence) => (
-            <View key={sentence.id} className="gap-2 rounded-xl border border-amber/50 bg-cream p-3">
+            <View key={sentence.id} className="gap-2 rounded-2xl bg-cream/60 p-3">
               <View className="flex-row items-start justify-between gap-2">
                 <View className="flex-1">
                   <FuriganaText
@@ -300,6 +286,7 @@ export default function WordDetailScreen() {
                 <View className="flex-row gap-1">
                   <IconButton
                     icon="volume-up"
+                    tone="cream"
                     size={32}
                     label={t('word.listen')}
                     onPress={() => speakJapanese(furiganaToReading(sentence.ja), speed)}
@@ -313,30 +300,25 @@ export default function WordDetailScreen() {
                   />
                 </View>
               </View>
-              <Text className="border-t border-amber/30 pt-1.5 text-[13px] text-sumi-light">
+              <Text className="text-[13px] leading-5 text-sumi-light">
                 {translationFor(sentence, settings.meaningLanguage)}
               </Text>
             </View>
           ))}
           {(unseen > 0 || sentences.length > 0) && (
-          <Pressable
-            accessibilityRole="button"
-            disabled={unseen === 0}
-            onPress={showAnotherExample}
-            className={`flex-row items-center justify-center gap-2 rounded-xl border-2 border-amber bg-cream px-4 py-2.5 active:bg-amber/30 ${
-              unseen === 0 ? 'opacity-50' : ''
-            }`}>
-            <Icon name={unseen === 0 ? 'check' : 'auto-awesome'} size={18} />
-            <Text className="text-[14px] font-bold text-sumi">
-              {unseen === 0 ? t('word.noMoreExamples') : t('word.anotherExample')}
-            </Text>
-          </Pressable>
+            <StampButton
+              tone="quiet"
+              icon={unseen === 0 ? 'check' : 'auto-awesome'}
+              label={unseen === 0 ? t('word.noMoreExamples') : t('word.anotherExample')}
+              disabled={unseen === 0}
+              onPress={showAnotherExample}
+            />
           )}
         </Card>
 
         {/* 5. Related words */}
         <Card>
-          <SectionHeader icon="hub" title={t('word.relatedTitle')} />
+          <SectionHeader title={t('word.relatedTitle')} />
           {groups.length === 0 ? (
             <EmptyState icon="hub" message={t('word.relatedEmpty')} />
           ) : (
@@ -344,14 +326,14 @@ export default function WordDetailScreen() {
               {groups.map((group) => (
                 <View
                   key={group.kind}
-                  className="min-w-[46%] flex-1 gap-2 rounded-xl border border-amber/50 bg-cream p-3">
+                  className="min-w-[46%] flex-1 gap-2 rounded-2xl bg-cream/60 p-3">
                   <View className="flex-row items-center gap-1">
                     <Icon
                       name={RELATION_ICON[group.kind]}
                       size={16}
                       color={group.kind === 'confusing' ? colors.shu.DEFAULT : colors.amber.dark}
                     />
-                    <Text className="text-[12px] font-bold text-sumi">{t(`relation.${group.kind}`)}</Text>
+                    <Text className="font-display text-[12px] text-sumi">{t(`relation.${group.kind}`)}</Text>
                   </View>
                   {group.words.map((other) => (
                     <Pressable
@@ -376,7 +358,7 @@ export default function WordDetailScreen() {
 
         {/* 6. Tags and personal notes */}
         <Card>
-          <SectionHeader icon="edit-note" title={t('word.notesTitle')} />
+          <SectionHeader title={t('word.notesTitle')} />
           {word.tags.length > 0 && (
             <View className="flex-row flex-wrap gap-1.5">
               {word.tags.map((tag) => (
@@ -384,8 +366,10 @@ export default function WordDetailScreen() {
               ))}
             </View>
           )}
-          <View className="flex-row items-start gap-2 rounded-xl border border-amber/60 bg-cream p-3">
-            <Icon name="sticky-note-2" size={18} color={colors.amber.dark} />
+          {/* A sticky note, with a strip of washi tape on top. */}
+          <View className="mt-2 flex-row items-start gap-2 rounded-xl bg-amber/30 p-3 pt-4">
+            <View className="absolute -top-1.5 left-8 h-3 w-16 -rotate-2 rounded-sm bg-cream-dark/90" />
+            <Icon name="sticky-note-2" size={18} color={colors.amber.deep} />
             <TextInput
               value={notes}
               onChangeText={setNotes}
@@ -400,19 +384,26 @@ export default function WordDetailScreen() {
 
         {/* Library actions */}
         {word.savedAt === null ? (
-          <ActionButton icon="library-add" label={t('word.addToLibrary')} tone="amber" onPress={toggleSaved} />
+          <StampButton icon="library-add" label={t('word.addToLibrary')} tone="amber" onPress={toggleSaved} />
         ) : (
           <View className="flex-row gap-2">
-            <ActionButton
+            <StampButton
               icon="edit"
               label={t('common.edit')}
               tone="sumi"
+              className="flex-1"
               onPress={() => router.push({ pathname: '/word-form', params: { id: String(word.id) } })}
             />
             {word.isCustom ? (
-              <ActionButton icon="delete-outline" label={t('common.delete')} tone="quiet" onPress={confirmDelete} />
+              <StampButton icon="delete-outline" label={t('common.delete')} tone="shu" className="flex-1" onPress={confirmDelete} />
             ) : (
-              <ActionButton icon="bookmark-remove" label={t('word.removeFromLibrary')} tone="quiet" onPress={toggleSaved} />
+              <StampButton
+                icon="bookmark-remove"
+                label={t('word.removeFromLibrary')}
+                tone="quiet"
+                className="flex-1"
+                onPress={toggleSaved}
+              />
             )}
           </View>
         )}
@@ -428,35 +419,9 @@ function TogglePill({ label, on, onPress }: { label: string; on: boolean; onPres
       accessibilityState={{ checked: on }}
       onPress={onPress}
       hitSlop={6}
-      className={`rounded-full border px-2.5 py-1 ${on ? 'border-sumi/20 bg-amber' : 'border-sumi/20 bg-cream'}`}>
-      <Text className={`text-[11px] font-bold ${on ? 'text-sumi' : 'text-sumi-muted'}`}>{label}</Text>
+      className={`rounded-full px-2.5 py-1.5 ${on ? 'bg-sumi' : 'bg-cream'}`}>
+      <Text className={`font-display text-[11px] ${on ? 'text-amber' : 'text-sumi-muted'}`}>{label}</Text>
     </Pressable>
   );
 }
 
-function ActionButton({
-  icon,
-  label,
-  tone,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  tone: 'amber' | 'sumi' | 'quiet';
-  onPress: () => void;
-}) {
-  const box = {
-    amber: 'border border-sumi/30 bg-amber active:bg-amber-hover',
-    sumi: 'bg-sumi active:opacity-80',
-    quiet: 'border border-sumi/25 bg-cream-light active:bg-cream-dark',
-  }[tone];
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3.5 ${box}`}>
-      <Icon name={icon} size={20} color={tone === 'sumi' ? colors.amber.DEFAULT : colors.sumi.DEFAULT} />
-      <Text className={`text-[15px] font-bold ${tone === 'sumi' ? 'text-amber' : 'text-sumi'}`}>{label}</Text>
-    </Pressable>
-  );
-}

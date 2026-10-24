@@ -64,6 +64,26 @@ export type RelatedWord = {
   word: Word;
 };
 
+/** How a word is going in review: starred, weak (often missed) or known (usually right). */
+export type ReviewStatus = 'weak' | 'known' | null;
+
+/** A word as shown on a library card, with its first example and review history. */
+export type LibraryWord = Word & {
+  example: { ja: string; en: string; zh: string } | null;
+  reviews: number;
+  /** Share of reviews answered 覚えた; null if never reviewed. */
+  accuracy: number | null;
+  lastReviewedAt: string | null;
+  status: ReviewStatus;
+};
+
+export type LibraryStats = {
+  total: number;
+  starred: number;
+  /** Share of all reviews answered 覚えた; null if nothing reviewed yet. */
+  accuracy: number | null;
+};
+
 /** Review status filter in the library. */
 export type ReviewFilter = 'all' | 'starred' | 'weak';
 

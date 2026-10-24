@@ -2,10 +2,11 @@ import '@/global.css';
 import '@/i18n';
 
 import {
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
   useFonts,
-} from '@expo-google-fonts/space-grotesk';
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { Stack } from 'expo-router/stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
@@ -20,7 +21,11 @@ import colors from '@/theme/colors';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({ SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold });
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
 
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync();
