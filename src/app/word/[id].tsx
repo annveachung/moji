@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { FuriganaText } from '@/components/furigana-text';
-import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, type IconName } from '@/components/ui';
+import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
 import {
   countUnseenSentences,
   deleteWord,
@@ -322,11 +322,9 @@ export default function WordDetailScreen() {
           {groups.length === 0 ? (
             <EmptyState icon="hub" message={t('word.relatedEmpty')} />
           ) : (
-            <View className="flex-row flex-wrap gap-2.5">
+            <TwoColumnGrid gap={10}>
               {groups.map((group) => (
-                <View
-                  key={group.kind}
-                  className="min-w-[46%] flex-1 gap-2 rounded-2xl bg-surface-low p-3">
+                <View key={group.kind} className="flex-1 gap-2 rounded-2xl bg-surface-low p-3">
                   <View className="flex-row items-center gap-1">
                     <Icon
                       name={RELATION_ICON[group.kind]}
@@ -352,7 +350,7 @@ export default function WordDetailScreen() {
                   ))}
                 </View>
               ))}
-            </View>
+            </TwoColumnGrid>
           )}
         </Card>
 

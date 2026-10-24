@@ -80,14 +80,16 @@ export function LibraryCard({
             active={filters.pos === word.pos}
             onPress={() => onFilter({ pos: filters.pos === word.pos ? null : word.pos })}
           />
-          {word.topic !== null ? (
-            <TagPill
-              label={t(`topic.${word.topic}`)}
-              tone="outline"
-              active={filters.topic === word.topic}
-              onPress={() => onFilter({ topic: filters.topic === word.topic ? null : word.topic })}
-            />
-          ) : null}
+          {/* Words without a topic (like most you add yourself) are grouped as その他. */}
+          <TagPill
+            label={t(`topic.${word.topic ?? 'other'}`)}
+            tone="outline"
+            active={filters.topic === (word.topic ?? 'other')}
+            onPress={() => {
+              const topic = word.topic ?? 'other';
+              onFilter({ topic: filters.topic === topic ? null : topic });
+            }}
+          />
         </View>
         <View className="flex-row items-center gap-1.5">
           <StatusBadge word={word} />

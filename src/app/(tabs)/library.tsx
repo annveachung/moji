@@ -276,8 +276,7 @@ function ProgressRing({ percent, label }: { percent: number | null; label: strin
           />
         ) : null}
       </Svg>
-      <Text className="font-display text-[15px] leading-5 text-ink">{percent === null ? '—' : `${percent}%`}</Text>
-      <Text className="font-display-medium text-[9px] text-ink-muted">{label}</Text>
+      <Text className="font-display text-[15px] text-ink">{percent === null ? '—' : `${percent}%`}</Text>
     </View>
   );
 }

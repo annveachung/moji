@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import type { ComponentProps, ReactNode } from 'react';
+import { Children, type ComponentProps, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import colors from '@/theme/colors';
@@ -185,5 +185,30 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
       className={`rounded-full px-3.5 py-2 shadow-sm shadow-ink/10 ${selected ? 'bg-primary' : 'bg-card'}`}>
       <Text className={`font-display-semibold text-[12px] ${selected ? 'text-white' : 'text-ink-soft'}`}>{label}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * Lays children out in rows of two equal columns. (A wrapping flex row with
+ * flex-1 children doesn't reliably wrap in React Native, so we build the rows.)
+ */
+export function TwoColumnGrid({ children, gap = 12 }: { children: ReactNode; gap?: number }) {
+  const items = Children.toArray(children);
+  const rows: ReactNode[][] = [];
+  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  return (
+    <View style={{ gap }}>
+      {rows.map((row, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap }}>
+          {row.map((item, j) => (
+            <View key={j} style={{ flex: 1 }}>
+              {item}
+            </View>
+          ))}
+          {/* Keep a lone last card at half width. */}
+          {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+        </View>
+      ))}
+    </View>
   );
 }
