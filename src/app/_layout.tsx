@@ -38,11 +38,7 @@ export default function RootLayout() {
       <SettingsProvider>
         <StatusBar style="dark" />
         {/* A stack: the tabs at the bottom, and pages like a word's detail pushed on top. */}
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.surface.DEFAULT },
-          }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface.DEFAULT } }}>
           {/* The add/edit form slides up as a sheet. */}
           <Stack.Screen name="word-form" options={{ presentation: 'modal' }} />
         </Stack>
