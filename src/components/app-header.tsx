@@ -26,7 +26,7 @@ export function AppHeader({
   return (
     <View
       style={{ paddingTop: insets.top }}
-      className="bg-cream">
+      className="bg-surface">
       <View className="h-14 flex-row items-center justify-between gap-2 px-4">
         <View className="flex-1 flex-row items-center gap-2">
           {back && (
@@ -41,10 +41,10 @@ export function AppHeader({
           )}
           <View className="flex-1">
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="font-display text-[20px] leading-6 text-sumi">moji</Text>
-              <Text className="text-[12px] font-bold text-amber-deep">文字</Text>
+              <Text className="font-display text-[20px] leading-6 text-ink">moji</Text>
+              <Text className="text-[12px] font-bold text-primary">文字</Text>
             </View>
-            <Text numberOfLines={1} className="font-display-medium text-[12px] text-sumi-light">
+            <Text numberOfLines={1} className="font-display-medium text-[12px] text-ink-soft">
               {subtitle}
             </Text>
           </View>

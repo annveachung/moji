@@ -52,8 +52,6 @@ const en = {
     addPrompt: 'Add a new word…',
     addHint: 'Save words you meet in anime, books and on the street.',
     reviewTitle: '⭐ Review list',
-    starred_one: '{{count}} word',
-    starred_other: '{{count}} words',
     startReview: 'Start',
     noStarred: 'Star ⭐ words to review them here.',
     recentTitle: 'Recently added',
@@ -65,15 +63,14 @@ const en = {
     status: {
       all: 'All',
       starred: '⭐ Starred',
-      weak: 'Weak',
-      stats: {
+    },
+    stats: {
       words: 'words',
       starred: 'starred',
       remembered: 'remembered',
     },
     badge: {
       starred: 'Starred',
-      weak: 'Weak',
       known: 'Known',
     },
     listView: 'List view',
@@ -82,7 +79,6 @@ const en = {
     added: 'Added {{when}}',
     quote: 'ことばは旅の杖',
     quoteMeaning: 'Words are walking sticks for your journey. Keep collecting!',
-  },
     allPos: 'All types',
     allJlpt: 'All levels',
     count_one: '{{count}} word',
@@ -186,7 +182,6 @@ const en = {
     uiLanguage: 'App language',
     meaningLanguage: 'Show meanings in',
     showFurigana: 'Show furigana',
-    showRomaji: 'Show romaji',
   },
 };
 

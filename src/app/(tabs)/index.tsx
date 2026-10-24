@@ -1,13 +1,11 @@
-import { BlurView } from 'expo-blur';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FlowingBackground } from '@/components/flowing-background';
-import { Icon } from '@/components/ui';
+import { AppHeader } from '@/components/app-header';
+import { Card, EmptyState, Icon, SectionHeader, StampButton } from '@/components/ui';
 import { countStarred, getRecentlyAdded } from '@/db/queries';
 import type { Word } from '@/db/types';
 import { meaningFor } from '@/lib/meaning';
@@ -20,12 +18,11 @@ function greetingKey(hour: number) {
   return 'home.greeting.evening';
 }
 
-/** Home: a calm place to jot down a new word, start a review, and see what you added lately. */
+/** Home: jot down a new word, start a review, and see what you added lately. */
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const db = useSQLiteContext();
-  const insets = useSafeAreaInsets();
   const { settings } = useSettings();
   const [starred, setStarred] = useState(0);
   const [recent, setRecent] = useState<Word[]>([]);
@@ -45,72 +42,62 @@ export default function HomeScreen() {
   }).format(now);
 
   return (
-    <View className="flex-1">
-      <FlowingBackground />
+    <View className="flex-1 bg-surface">
+      <AppHeader subtitle={t('nav.home')} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerClassName="w-full max-w-[720px] self-center gap-5 px-5 pb-10"
-        contentContainerStyle={{ paddingTop: insets.top + 12 }}>
-        <View className="flex-row items-baseline gap-1.5">
-          <Text className="font-display text-[20px] text-sumi">moji</Text>
-          <Text className="text-[12px] font-bold text-amber-deep">文字</Text>
-        </View>
-
-        <View className="mt-10 gap-1">
-          <Text className="font-display-medium text-[14px] tracking-wide text-sumi-light">{dateLabel}</Text>
-          <Text className="text-[40px] font-bold leading-[48px] text-sumi">{t(greetingKey(now.getHours()))}</Text>
+        contentContainerClassName="w-full max-w-[720px] self-center gap-4 px-4 pb-10 pt-3">
+        <View className="gap-0.5 px-1 py-2">
+          <Text className="font-display-medium text-[13px] tracking-wide text-ink-soft">{dateLabel}</Text>
+          <Text className="text-[32px] font-bold leading-10 text-ink">{t(greetingKey(now.getHours()))}</Text>
         </View>
 
         {/* Add a word */}
-        <Glass>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('home.addPrompt')}
-            onPress={() => router.push('/word-form')}
-            className="flex-row items-center gap-4 p-5 active:opacity-70">
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-sumi">
-              <Icon name="add" size={28} color={colors.amber.DEFAULT} />
-            </View>
-            <View className="flex-1 gap-0.5">
-              <Text className="font-display text-[18px] text-sumi">{t('home.addPrompt')}</Text>
-              <Text className="text-[13px] leading-5 text-sumi-light">{t('home.addHint')}</Text>
-            </View>
-          </Pressable>
-        </Glass>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('home.addPrompt')}
+          onPress={() => router.push('/word-form')}
+          className="flex-row items-center gap-4 rounded-card bg-card p-5 shadow-md shadow-ink/10 active:opacity-80">
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-primary">
+            <Icon name="add" size={28} color="#FFFFFF" />
+          </View>
+          <View className="flex-1 gap-0.5">
+            <Text className="font-display text-[17px] text-ink">{t('home.addPrompt')}</Text>
+            <Text className="text-[13px] leading-5 text-ink-soft">{t('home.addHint')}</Text>
+          </View>
+          <Icon name="chevron-right" size={22} color={colors.ink.muted} />
+        </Pressable>
 
         {/* Review starred words */}
-        <Glass>
-          <View className="flex-row items-center gap-4 p-5">
-            <View className="flex-1 gap-0.5">
-              <Text className="font-display text-[15px] text-sumi">{t('home.reviewTitle')}</Text>
-              <Text className="text-[13px] text-sumi-light">
-                {starred > 0 ? t('home.starred', { count: starred }) : t('home.noStarred')}
-              </Text>
+        <Card>
+          <SectionHeader title={t('home.reviewTitle')} accent="mustard" />
+          {starred > 0 ? (
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-row items-baseline gap-1">
+                <Text className="font-display text-[30px] leading-9 text-ink">{starred}</Text>
+                <Text className="font-display-semibold text-[13px] text-ink-soft">{t('library.stats.words')}</Text>
+              </View>
+              <StampButton label={t('home.startReview')} icon="play-arrow" onPress={() => router.navigate('/review')} />
             </View>
-            {starred > 0 && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.navigate('/review')}
-                className="flex-row items-center gap-1 rounded-full bg-amber px-4 py-2.5 active:bg-amber-hover">
-                <Text className="font-display text-[14px] text-sumi">{t('home.startReview')}</Text>
-                <Icon name="play-arrow" size={18} />
-              </Pressable>
-            )}
-          </View>
-        </Glass>
+          ) : (
+            <EmptyState icon="star-border" message={t('home.noStarred')} />
+          )}
+        </Card>
 
         {/* Recently added */}
-        <View className="gap-3">
-          <View className="flex-row items-center justify-between px-1">
-            <Text className="font-display text-[15px] text-sumi">{t('home.recentTitle')}</Text>
-            {recent.length > 0 && (
-              <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.navigate('/library')}>
-                <Text className="text-[13px] font-semibold text-sumi-light">{t('home.seeAll')}</Text>
-              </Pressable>
-            )}
-          </View>
+        <Card>
+          <SectionHeader
+            title={t('home.recentTitle')}
+            right={
+              recent.length > 0 ? (
+                <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.navigate('/library')}>
+                  <Text className="font-display-semibold text-[13px] text-primary">{t('home.seeAll')}</Text>
+                </Pressable>
+              ) : undefined
+            }
+          />
           {recent.length === 0 ? (
-            <Text className="px-1 text-[13px] text-sumi-light">{t('home.recentEmpty')}</Text>
+            <EmptyState icon="auto-stories" message={t('home.recentEmpty')} />
           ) : (
             <View className="flex-row flex-wrap gap-2">
               {recent.map((word) => (
@@ -118,28 +105,17 @@ export default function HomeScreen() {
                   key={word.id}
                   accessibilityRole="button"
                   onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(word.id) } })}
-                  className="rounded-2xl bg-cream-light/80 px-3.5 py-2 active:opacity-70">
-                  <Text className="text-[17px] font-bold text-sumi">{word.word}</Text>
-                  <Text numberOfLines={1} className="max-w-[140px] text-[11px] text-sumi-light">
+                  className="rounded-2xl bg-surface-low px-3.5 py-2 active:opacity-70">
+                  <Text className="text-[17px] font-bold text-ink">{word.word}</Text>
+                  <Text numberOfLines={1} className="max-w-[140px] text-[11px] text-ink-soft">
                     {meaningFor(word, settings.meaningLanguage)}
                   </Text>
                 </Pressable>
               ))}
             </View>
           )}
-        </View>
+        </Card>
       </ScrollView>
-    </View>
-  );
-}
-
-/** Frosted glass card: the moving background shows through, softly blurred. */
-function Glass({ children }: { children: ReactNode }) {
-  return (
-    <View className="overflow-hidden rounded-[28px] border border-white/60 shadow-sm shadow-sumi/10">
-      <BlurView intensity={40} tint="light" style={{ backgroundColor: 'rgba(252, 245, 232, 0.45)' }}>
-        {children}
-      </BlurView>
     </View>
   );
 }

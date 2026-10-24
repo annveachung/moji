@@ -24,7 +24,7 @@ export default function SettingsScreen() {
   const { settings, updateSettings } = useSettings();
 
   return (
-    <View className="flex-1 bg-cream">
+    <View className="flex-1 bg-surface">
       <AppHeader subtitle={t('settings.title')} />
       <ScrollView
           // Leave room for the glass tab bar, which floats over the content
@@ -54,12 +54,6 @@ export default function SettingsScreen() {
               onChange={(showFurigana) => updateSettings({ showFurigana })}
             />
           </Row>
-          <Row label={t('settings.showRomaji')}>
-            <ThemedSwitch
-              value={settings.showRomaji}
-              onChange={(showRomaji) => updateSettings({ showRomaji })}
-            />
-          </Row>
         </Card>
 
       </ScrollView>
@@ -70,7 +64,7 @@ export default function SettingsScreen() {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="min-h-[44px] flex-row items-center justify-between gap-3">
-      <Text className="flex-1 font-display-semibold text-[15px] text-sumi">{label}</Text>
+      <Text className="flex-1 font-display-semibold text-[15px] text-ink">{label}</Text>
       {children}
     </View>
   );
@@ -86,7 +80,7 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <View className="flex-row rounded-full bg-cream p-0.5">
+    <View className="flex-row rounded-full bg-surface-high p-0.5">
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -95,8 +89,8 @@ function Segmented<T extends string>({
             accessibilityRole="button"
             accessibilityState={{ selected }}
             onPress={() => onChange(option.value)}
-            className={`rounded-full px-3 py-1.5 ${selected ? 'bg-sumi' : ''}`}>
-            <Text className={`text-[13px] ${selected ? 'font-bold text-amber' : 'text-sumi-muted'}`}>
+            className={`rounded-full px-3 py-1.5 ${selected ? 'bg-primary' : ''}`}>
+            <Text className={`text-[13px] ${selected ? 'font-bold text-white' : 'text-ink-muted'}`}>
               {option.label}
             </Text>
           </Pressable>
@@ -111,9 +105,9 @@ function ThemedSwitch({ value, onChange }: { value: boolean; onChange: (value: b
     <Switch
       value={value}
       onValueChange={onChange}
-      trackColor={{ true: colors.amber.DEFAULT, false: colors.cream.dark }}
+      trackColor={{ true: colors.primary.DEFAULT, false: colors.surface.highest }}
       thumbColor="#FFFFFF"
-      ios_backgroundColor={colors.cream.dark}
+      ios_backgroundColor={colors.surface.highest}
     />
   );
 }

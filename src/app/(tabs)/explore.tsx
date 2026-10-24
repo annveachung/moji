@@ -31,7 +31,7 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View className="flex-1 bg-cream">
+    <View className="flex-1 bg-surface">
       <AppHeader subtitle={t('nav.explore')} />
       <FlatList
         data={words}
@@ -40,7 +40,7 @@ export default function ExploreScreen() {
         contentContainerClassName="w-full max-w-[720px] self-center gap-2 px-4 pb-8"
         ListHeaderComponent={
           <View className="gap-3 pb-1 pt-4">
-            <Text className="px-1 text-[13px] leading-5 text-sumi-light">{t('explore.intro')}</Text>
+            <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.intro')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
               <Chip label={t('explore.all')} selected={topic === null} onPress={() => setTopic(null)} />
               {TOPICS.map((item) => (
@@ -55,7 +55,7 @@ export default function ExploreScreen() {
             right={
               <IconButton
                 icon={item.savedAt ? 'check' : 'add'}
-                tone={item.savedAt ? 'sumi' : 'amber'}
+                tone={item.savedAt ? 'soft' : 'primary'}
                 size={36}
                 label={item.savedAt ? t('explore.saved') : t('explore.save')}
                 onPress={() => toggleSaved(item)}

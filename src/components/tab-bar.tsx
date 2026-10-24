@@ -26,7 +26,7 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   return (
     <View
       style={{ paddingBottom: Math.max(insets.bottom, 8) }}
-      className="flex-row border-t border-sumi/15 bg-cream pt-2">
+      className="flex-row border-t border-ink/15 bg-surface-high pt-2">
       {state.routes.map((route, index) => {
         const tab = TABS[route.name];
         if (!tab) return null;
@@ -45,12 +45,12 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
             accessibilityLabel={t(tab.label)}
             onPress={onPress}
             className="min-h-[44px] flex-1 items-center justify-center">
-            <Icon name={tab.icon} size={24} color={focused ? colors.sumi.DEFAULT : colors.sumi.muted} />
+            <Icon name={tab.icon} size={24} color={focused ? colors.primary.DEFAULT : colors.ink.muted} />
             <Text
-              className={`mt-0.5 text-[11px] ${focused ? 'font-bold text-sumi' : 'text-sumi-muted'}`}>
+              className={`mt-0.5 text-[11px] ${focused ? 'font-bold text-primary' : 'text-ink-muted'}`}>
               {t(tab.label)}
             </Text>
-            <View className={`mt-1 h-1.5 w-1.5 rounded-full ${focused ? 'bg-sumi' : 'bg-transparent'}`} />
+            <View className={`mt-1 h-1.5 w-1.5 rounded-full ${focused ? 'bg-primary' : 'bg-transparent'}`} />
           </Pressable>
         );
       })}
