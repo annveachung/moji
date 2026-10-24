@@ -15,13 +15,13 @@ export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 export function Icon({
   name,
   size = 20,
-  color = colors.ink.DEFAULT,
+  color,
 }: {
   name: IconName;
   size?: number;
   color?: string;
 }) {
-  return <MaterialIcons name={name} size={size} color={color} />;
+  return <MaterialIcons name={name} size={size} color={color ?? colors.ink.DEFAULT} />;
 }
 
 /** The card every section sits on: white, no outline, a soft shadow. */

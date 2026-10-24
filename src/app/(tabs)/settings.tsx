@@ -27,9 +27,9 @@ export default function SettingsScreen() {
     <View className="flex-1 bg-surface">
       <AppHeader subtitle={t('settings.title')} />
       <ScrollView
-          // Leave room for the glass tab bar, which floats over the content
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerClassName="gap-4 p-4">
+        // Leave room for the glass tab bar, which floats over the content
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4 pb-10">
         <Card>
           <Row label={t('settings.uiLanguage')}>
             <Segmented
@@ -55,7 +55,6 @@ export default function SettingsScreen() {
             />
           </Row>
         </Card>
-
       </ScrollView>
     </View>
   );
@@ -111,3 +110,4 @@ function ThemedSwitch({ value, onChange }: { value: boolean; onChange: (value: b
     />
   );
 }
+

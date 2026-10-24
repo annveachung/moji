@@ -1,19 +1,25 @@
 /**
- * moji's palette, from the Stitch "Japanese Word Vault" design (Kotoba Washi Minimal).
+ * moji's palette: ほうじ茶 (hojicha), warm cream with caramel brown.
  * Plain JS so tailwind.config.js and the TypeScript code can share one source.
  * In className use e.g. `bg-surface`, `bg-card`, `text-ink-soft`, `bg-primary-soft`.
+ *
+ * Roles:
+ * - surface: the page (DEFAULT) and progressively darker blocks on it
+ * - card:    cards and inputs
+ * - ink:     text (DEFAULT), secondary text (soft), hints (muted)
+ * - primary: main buttons, selected chips, furigana, highlights
+ * - matcha:  things you know (習得)
+ * - mustard: stars, JLPT levels, sticky notes
+ * - error:   delete, false-friend warnings
+ *
+ * Keep text contrast at 4.5:1 or more when changing these.
  */
 module.exports = {
-  // Warm washi paper. DEFAULT is the page; the others are progressively darker blocks.
-  surface: { DEFAULT: '#FEF8F4', low: '#F8F2EF', mid: '#F3EDE9', high: '#EDE7E3', highest: '#E7E1DE' },
+  surface: { DEFAULT: '#FAF4EC', low: '#F4ECE2', mid: '#EFE5D9', high: '#E8DDCF', highest: '#E0D4C5' },
   card: '#FFFFFF',
-  // Text: DEFAULT for main text, soft for secondary, muted for hints and placeholders.
-  ink: { DEFAULT: '#1D1B19', soft: '#59413C', muted: '#8C716B' },
-  // Vermilion, like a hanko seal: main buttons, furigana, highlights.
-  primary: { DEFAULT: '#A9311B', bright: '#CA4931', soft: '#FFDAD3', deep: '#8A1B07' },
-  // Matcha green: things you know.
-  matcha: { DEFAULT: '#326A38', soft: '#B1EFB0', ink: '#366E3C' },
-  // Mustard: JLPT levels, stars, sticky notes.
-  mustard: { DEFAULT: '#745800', soft: '#FFDF97', dim: '#EEC14D' },
-  error: { DEFAULT: '#BA1A1A', soft: '#FFDAD6' },
+  ink: { DEFAULT: '#2A2018', soft: '#5E4A3A', muted: '#776253' },
+  primary: { DEFAULT: '#93552A', bright: '#B8743F', soft: '#F6DEC8', deep: '#723F1B' },
+  matcha: { DEFAULT: '#4E7A45', soft: '#D3EBC8', ink: '#3E6936' },
+  mustard: { DEFAULT: '#735A00', soft: '#FBE3A0', dim: '#E5BE4A' },
+  error: { DEFAULT: '#B3261E', soft: '#FFDAD6' },
 };
