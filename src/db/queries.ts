@@ -5,6 +5,8 @@ import { kanjiIn, makeFurigana } from '@/lib/furigana';
 
 import type {
   LibraryFilters,
+  LibraryStats,
+  LibraryWord,
   RelatedWord,
   RelationKind,
   Sentence,
@@ -94,8 +96,40 @@ export async function getWord(db: SQLiteDatabase, id: number): Promise<Word | nu
   return row ? toWord(row) : null;
 }
 
+type LibraryRow = WordRow & {
+  example_ja: string | null;
+  example_en: string | null;
+  example_zh: string | null;
+  reviews: number;
+  correct: number;
+  last_reviewed_at: string | null;
+};
+
+function toLibraryWord(row: LibraryRow): LibraryWord {
+  const accuracy = row.reviews > 0 ? row.correct / row.reviews : null;
+  return {
+    ...toWord(row),
+    example:
+      row.example_ja !== null
+        ? { ja: row.example_ja, en: row.example_en ?? '', zh: row.example_zh ?? '' }
+        : null,
+    reviews: row.reviews,
+    accuracy,
+    lastReviewedAt: row.last_reviewed_at,
+    // Same rule as WEAK_CONDITION; "known" = reviewed 3+ times, right at least 80%.
+    status:
+      accuracy === null
+        ? null
+        : row.reviews >= 2 && accuracy < 0.6
+          ? 'weak'
+          : row.reviews >= 3 && accuracy >= 0.8
+            ? 'known'
+            : null,
+  };
+}
+
 /** Your library: saved words, newest first, narrowed by search and filters. */
-export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): Promise<Word[]> {
+export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): Promise<LibraryWord[]> {
   const where = ['w.saved_at IS NOT NULL'];
   const params: (string | number)[] = [];
   const search = filters.search.trim();
@@ -114,11 +148,37 @@ export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): P
   if (filters.status === 'starred') where.push('w.starred_at IS NOT NULL');
   if (filters.status === 'weak') where.push(WEAK_CONDITION);
 
-  const rows = await db.getAllAsync<WordRow>(
-    `SELECT w.* FROM words w WHERE ${where.join(' AND ')} ORDER BY w.saved_at DESC`,
+  const rows = await db.getAllAsync<LibraryRow>(
+    `SELECT w.*,
+            s.ja AS example_ja, s.en AS example_en, s.zh AS example_zh,
+            (SELECT COUNT(*) FROM review_logs l WHERE l.word_id = w.id) AS reviews,
+            (SELECT COUNT(*) FROM review_logs l WHERE l.word_id = w.id AND l.rating > 1) AS correct,
+            (SELECT MAX(reviewed_at) FROM review_logs l WHERE l.word_id = w.id) AS last_reviewed_at
+       FROM words w
+       LEFT JOIN sentences s ON s.id = (
+         SELECT id FROM sentences WHERE word_id = w.id ORDER BY favorite DESC, seen DESC, id LIMIT 1
+       )
+      WHERE ${where.join(' AND ')}
+      ORDER BY w.saved_at DESC`,
     ...params,
   );
-  return rows.map(toWord);
+  return rows.map(toLibraryWord);
+}
+
+/** Numbers for the library's stats strip. */
+export async function getLibraryStats(db: SQLiteDatabase): Promise<LibraryStats> {
+  const row = await db.getFirstAsync<{ total: number; starred: number }>(
+    `SELECT COUNT(*) AS total, COUNT(starred_at) AS starred FROM words WHERE saved_at IS NOT NULL`,
+  );
+  const reviews = await db.getFirstAsync<{ correct: number; total: number }>(
+    `SELECT COALESCE(SUM(l.rating > 1), 0) AS correct, COUNT(*) AS total
+       FROM review_logs l JOIN words w ON w.id = l.word_id WHERE w.saved_at IS NOT NULL`,
+  );
+  return {
+    total: row?.total ?? 0,
+    starred: row?.starred ?? 0,
+    accuracy: reviews && reviews.total > 0 ? reviews.correct / reviews.total : null,
+  };
 }
 
 export async function getRecentlyAdded(db: SQLiteDatabase, limit: number): Promise<Word[]> {

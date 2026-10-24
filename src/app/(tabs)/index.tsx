@@ -51,11 +51,9 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerClassName="w-full max-w-[720px] self-center gap-5 px-5 pb-10"
         contentContainerStyle={{ paddingTop: insets.top + 12 }}>
-        <View className="flex-row items-center gap-2">
-          <View className="h-7 w-7 items-center justify-center rounded-lg bg-sumi">
-            <Text className="text-[15px] font-bold text-amber">文</Text>
-          </View>
-          <Text className="font-display text-[18px] text-sumi">moji</Text>
+        <View className="flex-row items-baseline gap-1.5">
+          <Text className="font-display text-[20px] text-sumi">moji</Text>
+          <Text className="text-[12px] font-bold text-amber-deep">文字</Text>
         </View>
 
         <View className="mt-10 gap-1">
@@ -74,7 +72,7 @@ export default function HomeScreen() {
               <Icon name="add" size={28} color={colors.amber.DEFAULT} />
             </View>
             <View className="flex-1 gap-0.5">
-              <Text className="text-[18px] font-bold text-sumi">{t('home.addPrompt')}</Text>
+              <Text className="font-display text-[18px] text-sumi">{t('home.addPrompt')}</Text>
               <Text className="text-[13px] leading-5 text-sumi-light">{t('home.addHint')}</Text>
             </View>
           </Pressable>
@@ -84,7 +82,7 @@ export default function HomeScreen() {
         <Glass>
           <View className="flex-row items-center gap-4 p-5">
             <View className="flex-1 gap-0.5">
-              <Text className="text-[15px] font-bold text-sumi">{t('home.reviewTitle')}</Text>
+              <Text className="font-display text-[15px] text-sumi">{t('home.reviewTitle')}</Text>
               <Text className="text-[13px] text-sumi-light">
                 {starred > 0 ? t('home.starred', { count: starred }) : t('home.noStarred')}
               </Text>
@@ -94,7 +92,7 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 onPress={() => router.navigate('/review')}
                 className="flex-row items-center gap-1 rounded-full bg-amber px-4 py-2.5 active:bg-amber-hover">
-                <Text className="text-[14px] font-bold text-sumi">{t('home.startReview')}</Text>
+                <Text className="font-display text-[14px] text-sumi">{t('home.startReview')}</Text>
                 <Icon name="play-arrow" size={18} />
               </Pressable>
             )}
@@ -104,7 +102,7 @@ export default function HomeScreen() {
         {/* Recently added */}
         <View className="gap-3">
           <View className="flex-row items-center justify-between px-1">
-            <Text className="text-[15px] font-bold text-sumi">{t('home.recentTitle')}</Text>
+            <Text className="font-display text-[15px] text-sumi">{t('home.recentTitle')}</Text>
             {recent.length > 0 && (
               <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.navigate('/library')}>
                 <Text className="text-[13px] font-semibold text-sumi-light">{t('home.seeAll')}</Text>

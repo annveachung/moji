@@ -18,7 +18,7 @@ export function WordRow({ word, right }: { word: Word; right?: ReactNode }) {
       accessibilityRole="button"
       accessibilityLabel={`${word.word} ${word.reading}`}
       onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(word.id) } })}
-      className="flex-row items-center gap-3 rounded-2xl border border-sumi/10 bg-cream-light px-4 py-3 active:opacity-70">
+      className="flex-row items-center gap-3 rounded-2xl bg-paper px-4 py-3 shadow-md shadow-sumi/10 active:opacity-70">
       <View className="flex-1 gap-0.5">
         <FuriganaText
           markup={word.furigana}

@@ -16,6 +16,8 @@ type Props = {
   hideTarget?: boolean;
   /** Classes for the wrapping row, e.g. `justify-center`. */
   containerClassName?: string;
+  /** Classes for the small reading above the kanji. */
+  rubyClassName?: string;
 };
 
 /**
@@ -31,6 +33,7 @@ export function FuriganaText({
   targetClassName = '',
   hideTarget = false,
   containerClassName = '',
+  rubyClassName = 'text-amber-deep',
 }: Props) {
   const rubySize = Math.round(size * 0.5);
   const segments = parseFurigana(markup);
@@ -69,7 +72,7 @@ export function FuriganaText({
       {units.map((unit, i) => (
         <View key={i} className="items-center">
           <Text
-            className={`${className} opacity-70`}
+            className={`font-semibold tracking-wide ${rubyClassName}`}
             style={{ fontSize: rubySize, lineHeight: rubySize * 1.3 }}>
             {unit.ruby ?? ' '}
           </Text>
