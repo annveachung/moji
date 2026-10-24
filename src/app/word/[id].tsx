@@ -1,8 +1,8 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -10,20 +10,21 @@ import { FuriganaText } from '@/components/furigana-text';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, type IconName } from '@/components/ui';
 import {
   countUnseenSentences,
-  getCard,
+  deleteWord,
   getRelatedWords,
   getShownSentences,
   getWord,
   revealNextSentence,
   setSentenceFavorite,
   setWordSaved,
+  setWordStarred,
   updateWordNotes,
 } from '@/db/queries';
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
 import { furiganaToReading } from '@/lib/furigana';
+import { meaningFor, translationFor } from '@/lib/meaning';
 import { toRomaji } from '@/lib/romaji';
 import { speakJapanese } from '@/lib/speech';
-import { learnWord } from '@/lib/srs';
 import { useSettings } from '@/state/settings';
 import colors from '@/theme/colors';
 
@@ -52,7 +53,6 @@ export default function WordDetailScreen() {
   const zh = settings.meaningLanguage === 'zh-TW';
 
   const [word, setWord] = useState<Word | null | undefined>(undefined);
-  const [inDeck, setInDeck] = useState(false);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [unseen, setUnseen] = useState(0);
   const [related, setRelated] = useState<RelatedWord[]>([]);
@@ -64,7 +64,6 @@ export default function WordDetailScreen() {
     setWord(loaded);
     if (!loaded) return;
     setNotes(loaded.notes);
-    setInDeck((await getCard(db, wordId)) !== null);
     setRelated(await getRelatedWords(db, loaded));
     let shown = await getShownSentences(db, wordId);
     // First visit: reveal the first example so the section is never empty.
@@ -76,9 +75,12 @@ export default function WordDetailScreen() {
     setUnseen(await countUnseenSentences(db, wordId));
   }, [db, wordId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Reload when you come back, e.g. after editing the word.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   if (word === undefined) return <View className="flex-1 bg-cream" />;
   if (word === null) {
@@ -97,11 +99,23 @@ export default function WordDetailScreen() {
     setWord(await getWord(db, word.id));
   };
 
-  const addToDeck = async () => {
-    await learnWord(db, word.id);
-    setInDeck(true);
+  const toggleStar = async () => {
+    await setWordStarred(db, word.id, word.starredAt === null);
     setWord(await getWord(db, word.id));
   };
+
+  const confirmDelete = () =>
+    Alert.alert(t('word.deleteConfirmTitle'), t('word.deleteConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          await deleteWord(db, word.id);
+          router.back();
+        },
+      },
+    ]);
 
   const showAnotherExample = async () => {
     const next = await revealNextSentence(db, word.id);
@@ -150,21 +164,21 @@ export default function WordDetailScreen() {
             </View>
             <View className="flex-row items-center gap-1.5">
               <TogglePill
-                label="ふりがな"
+                label={t('word.furigana')}
                 on={settings.showFurigana}
                 onPress={() => updateSettings({ showFurigana: !settings.showFurigana })}
               />
               <TogglePill
-                label="Romaji"
+                label={t('word.romaji')}
                 on={settings.showRomaji}
                 onPress={() => updateSettings({ showRomaji: !settings.showRomaji })}
               />
               <IconButton
-                icon={word.savedAt ? 'bookmark' : 'bookmark-border'}
-                tone={word.savedAt ? 'amber' : 'cream'}
+                icon={word.starredAt ? 'star' : 'star-border'}
+                tone={word.starredAt ? 'amber' : 'cream'}
                 size={34}
-                label={word.savedAt ? t('word.saved') : t('word.save')}
-                onPress={toggleSaved}
+                label={word.starredAt ? t('word.starred') : t('word.star')}
+                onPress={toggleStar}
               />
             </View>
           </View>
@@ -233,7 +247,7 @@ export default function WordDetailScreen() {
               {zh ? '繁體中文' : 'English'}
             </Text>
             <Text className="text-[20px] font-bold leading-7 text-sumi">
-              {zh ? word.meaningZh : word.meaningEn}
+              {meaningFor(word, settings.meaningLanguage)}
             </Text>
           </View>
         </Card>
@@ -270,6 +284,7 @@ export default function WordDetailScreen() {
               </Text>
             }
           />
+          {sentences.length === 0 && <EmptyState icon="auto-stories" message={t('word.examplesEmpty')} />}
           {sentences.map((sentence) => (
             <View key={sentence.id} className="gap-2 rounded-xl border border-amber/50 bg-cream p-3">
               <View className="flex-row items-start justify-between gap-2">
@@ -299,10 +314,11 @@ export default function WordDetailScreen() {
                 </View>
               </View>
               <Text className="border-t border-amber/30 pt-1.5 text-[13px] text-sumi-light">
-                {zh ? sentence.zh : sentence.en}
+                {translationFor(sentence, settings.meaningLanguage)}
               </Text>
             </View>
           ))}
+          {(unseen > 0 || sentences.length > 0) && (
           <Pressable
             accessibilityRole="button"
             disabled={unseen === 0}
@@ -315,6 +331,7 @@ export default function WordDetailScreen() {
               {unseen === 0 ? t('word.noMoreExamples') : t('word.anotherExample')}
             </Text>
           </Pressable>
+          )}
         </Card>
 
         {/* 5. Related words */}
@@ -348,7 +365,7 @@ export default function WordDetailScreen() {
                         showFurigana={settings.showFurigana}
                         className="font-bold text-sumi"
                       />
-                      <Text className="text-[12px] text-sumi-light">{zh ? other.meaningZh : other.meaningEn}</Text>
+                      <Text className="text-[12px] text-sumi-light">{meaningFor(other, settings.meaningLanguage)}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -381,23 +398,24 @@ export default function WordDetailScreen() {
           </View>
         </Card>
 
-        {/* Main action */}
-        <Pressable
-          accessibilityRole="button"
-          disabled={inDeck}
-          onPress={addToDeck}
-          className={`flex-row items-center justify-center gap-2 rounded-xl px-4 py-3.5 shadow-md shadow-sumi/20 ${
-            inDeck ? 'bg-sumi' : 'border border-sumi/30 bg-amber active:bg-amber-hover'
-          }`}>
-          <Icon
-            name={inDeck ? 'check-circle' : 'style'}
-            size={20}
-            color={inDeck ? colors.amber.DEFAULT : colors.sumi.DEFAULT}
-          />
-          <Text className={`text-[15px] font-bold ${inDeck ? 'text-amber' : 'text-sumi'}`}>
-            {inDeck ? t('word.inDeck') : t('word.addToDeck')}
-          </Text>
-        </Pressable>
+        {/* Library actions */}
+        {word.savedAt === null ? (
+          <ActionButton icon="library-add" label={t('word.addToLibrary')} tone="amber" onPress={toggleSaved} />
+        ) : (
+          <View className="flex-row gap-2">
+            <ActionButton
+              icon="edit"
+              label={t('common.edit')}
+              tone="sumi"
+              onPress={() => router.push({ pathname: '/word-form', params: { id: String(word.id) } })}
+            />
+            {word.isCustom ? (
+              <ActionButton icon="delete-outline" label={t('common.delete')} tone="quiet" onPress={confirmDelete} />
+            ) : (
+              <ActionButton icon="bookmark-remove" label={t('word.removeFromLibrary')} tone="quiet" onPress={toggleSaved} />
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -412,6 +430,33 @@ function TogglePill({ label, on, onPress }: { label: string; on: boolean; onPres
       hitSlop={6}
       className={`rounded-full border px-2.5 py-1 ${on ? 'border-sumi/20 bg-amber' : 'border-sumi/20 bg-cream'}`}>
       <Text className={`text-[11px] font-bold ${on ? 'text-sumi' : 'text-sumi-muted'}`}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  tone,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  tone: 'amber' | 'sumi' | 'quiet';
+  onPress: () => void;
+}) {
+  const box = {
+    amber: 'border border-sumi/30 bg-amber active:bg-amber-hover',
+    sumi: 'bg-sumi active:opacity-80',
+    quiet: 'border border-sumi/25 bg-cream-light active:bg-cream-dark',
+  }[tone];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3.5 ${box}`}>
+      <Icon name={icon} size={20} color={tone === 'sumi' ? colors.amber.DEFAULT : colors.sumi.DEFAULT} />
+      <Text className={`text-[15px] font-bold ${tone === 'sumi' ? 'text-amber' : 'text-sumi'}`}>{label}</Text>
     </Pressable>
   );
 }

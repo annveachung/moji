@@ -15,7 +15,11 @@ export type ChineseLinkKind = 'same' | 'nuance' | 'false-friend';
 
 export type RelationKind = 'synonym' | 'antonym' | 'confusing';
 
+/** Languages for meanings and translations. */
 export type Language = 'en' | 'zh-TW';
+
+/** Languages for the app's interface. Japanese is the default, for immersion. */
+export type UiLanguage = 'ja' | Language;
 
 export type Word = {
   id: number;
@@ -37,6 +41,10 @@ export type Word = {
   zhNoteZh: string | null;
   /** When the word was added to the user's library; null = only in the catalog. */
   savedAt: string | null;
+  /** When the word was ⭐ starred for review; null = not starred. */
+  starredAt: string | null;
+  /** true = typed in by the user, false = from the starter catalog. */
+  isCustom: boolean;
   createdAt: string;
 };
 
@@ -56,14 +64,25 @@ export type RelatedWord = {
   word: Word;
 };
 
-export type TodayWord = {
-  word: Word;
-  /** new = not started yet, learning = in the deck, known = graduated from learning steps */
-  status: 'new' | 'learning' | 'known';
+/** Review status filter in the library. */
+export type ReviewFilter = 'all' | 'starred' | 'weak';
+
+export type LibraryFilters = {
+  search: string;
+  pos: PartOfSpeech | null;
+  jlpt: JlptLevel | null;
+  status: ReviewFilter;
 };
 
-export type WeakWord = {
-  word: Word;
-  /** Share of reviews answered without "Again"; null if never reviewed. */
-  accuracy: number | null;
+/** What the add/edit form collects. Romaji and furigana are worked out automatically. */
+export type WordInput = {
+  word: string;
+  reading: string;
+  meaningEn: string;
+  meaningZh: string;
+  pos: PartOfSpeech;
+  jlpt: JlptLevel | null;
+  notes: string;
+  starred: boolean;
+  example: { ja: string; translation: string } | null;
 };

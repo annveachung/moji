@@ -32,7 +32,7 @@ const MONOGRAPHS: Record<string, string> = {
 };
 
 /** Katakana → hiragana (they sit exactly 0x60 apart in Unicode). */
-function toHiragana(text: string): string {
+export function toHiragana(text: string): string {
   return text.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
 }
 

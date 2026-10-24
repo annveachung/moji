@@ -132,3 +132,18 @@ export function EmptyState({ icon, message }: { icon: IconName; message: string 
     </View>
   );
 }
+
+/** A tappable filter chip; amber when selected. */
+export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={`rounded-full border px-3.5 py-1.5 ${
+        selected ? 'border-sumi/20 bg-amber' : 'border-sumi/15 bg-cream-light'
+      }`}>
+      <Text className={`text-[13px] ${selected ? 'font-bold text-sumi' : 'text-sumi-light'}`}>{label}</Text>
+    </Pressable>
+  );
+}

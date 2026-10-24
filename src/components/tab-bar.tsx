@@ -1,19 +1,16 @@
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { countDueReviews } from '@/db/queries';
 import colors from '@/theme/colors';
 
 import { Icon, type IconName } from './ui';
 
 const TABS: Record<string, { icon: IconName; label: string }> = {
-  index: { icon: 'auto-awesome', label: 'nav.dashboard' },
+  index: { icon: 'home', label: 'nav.home' },
   library: { icon: 'style', label: 'nav.library' },
-  review: { icon: 'sync', label: 'nav.review' },
+  review: { icon: 'star', label: 'nav.review' },
   explore: { icon: 'explore', label: 'nav.explore' },
   settings: { icon: 'tune', label: 'nav.settings' },
 };
@@ -25,13 +22,6 @@ const TABS: Record<string, { icon: IconName; label: string }> = {
 export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const db = useSQLiteContext();
-  const [due, setDue] = useState(0);
-
-  // Recount due reviews whenever you switch tabs.
-  useEffect(() => {
-    countDueReviews(db).then(setDue);
-  }, [db, state.index]);
 
   return (
     <View
@@ -55,18 +45,7 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
             accessibilityLabel={t(tab.label)}
             onPress={onPress}
             className="min-h-[44px] flex-1 items-center justify-center">
-            <View>
-              <Icon
-                name={tab.icon}
-                size={24}
-                color={focused ? colors.sumi.DEFAULT : colors.sumi.muted}
-              />
-              {route.name === 'review' && due > 0 && (
-                <View className="absolute -right-3 -top-1 min-w-[18px] items-center rounded-full bg-shu px-1">
-                  <Text className="text-[10px] font-bold text-cream-light">{due > 99 ? '99+' : due}</Text>
-                </View>
-              )}
-            </View>
+            <Icon name={tab.icon} size={24} color={focused ? colors.sumi.DEFAULT : colors.sumi.muted} />
             <Text
               className={`mt-0.5 text-[11px] ${focused ? 'font-bold text-sumi' : 'text-sumi-muted'}`}>
               {t(tab.label)}

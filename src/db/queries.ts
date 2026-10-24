@@ -1,11 +1,17 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { addDays, toLocalDay } from '@/lib/date';
-import { kanjiIn } from '@/lib/furigana';
+import { toLocalDay } from '@/lib/date';
+import { kanjiIn, makeFurigana } from '@/lib/furigana';
 
-import type { CardRow } from '@/lib/srs';
-
-import type { RelatedWord, RelationKind, Sentence, TodayWord, WeakWord, Word } from './types';
+import type {
+  LibraryFilters,
+  RelatedWord,
+  RelationKind,
+  Sentence,
+  Topic,
+  Word,
+  WordInput,
+} from './types';
 
 type WordRow = {
   id: number;
@@ -23,6 +29,8 @@ type WordRow = {
   zh_note_en: string | null;
   zh_note_zh: string | null;
   saved_at: string | null;
+  starred_at: string | null;
+  is_custom: number;
   created_at: string;
 };
 
@@ -53,6 +61,8 @@ function toWord(row: WordRow): Word {
     zhNoteEn: row.zh_note_en,
     zhNoteZh: row.zh_note_zh,
     savedAt: row.saved_at,
+    starredAt: row.starred_at,
+    isCustom: row.is_custom === 1,
     createdAt: row.created_at,
   };
 }
@@ -69,6 +79,14 @@ function toSentence(row: SentenceRow): Sentence {
   };
 }
 
+/**
+ * A word is "weak" once it has been reviewed at least twice and you remembered it
+ * less than 60% of the time.
+ */
+const WEAK_CONDITION = `(
+  SELECT COUNT(*) >= 2 AND AVG(l.rating > 1) < 0.6 FROM review_logs l WHERE l.word_id = w.id
+)`;
+
 // ── Words ────────────────────────────────────────────────────
 
 export async function getWord(db: SQLiteDatabase, id: number): Promise<Word | null> {
@@ -76,15 +94,127 @@ export async function getWord(db: SQLiteDatabase, id: number): Promise<Word | nu
   return row ? toWord(row) : null;
 }
 
+/** Your library: saved words, newest first, narrowed by search and filters. */
+export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): Promise<Word[]> {
+  const where = ['w.saved_at IS NOT NULL'];
+  const params: (string | number)[] = [];
+  const search = filters.search.trim();
+  if (search) {
+    where.push('(w.word LIKE ? OR w.reading LIKE ? OR w.meaning_en LIKE ? OR w.meaning_zh LIKE ?)');
+    params.push(...Array(4).fill(`%${search}%`));
+  }
+  if (filters.pos) {
+    where.push('w.pos = ?');
+    params.push(filters.pos);
+  }
+  if (filters.jlpt) {
+    where.push('w.jlpt = ?');
+    params.push(filters.jlpt);
+  }
+  if (filters.status === 'starred') where.push('w.starred_at IS NOT NULL');
+  if (filters.status === 'weak') where.push(WEAK_CONDITION);
+
+  const rows = await db.getAllAsync<WordRow>(
+    `SELECT w.* FROM words w WHERE ${where.join(' AND ')} ORDER BY w.saved_at DESC`,
+    ...params,
+  );
+  return rows.map(toWord);
+}
+
+export async function getRecentlyAdded(db: SQLiteDatabase, limit: number): Promise<Word[]> {
+  const rows = await db.getAllAsync<WordRow>(
+    'SELECT * FROM words WHERE saved_at IS NOT NULL ORDER BY saved_at DESC LIMIT ?',
+    limit,
+  );
+  return rows.map(toWord);
+}
+
+/** Starter catalog words for 発見, optionally for one topic. */
+export async function getCatalog(db: SQLiteDatabase, topic: Topic | null): Promise<Word[]> {
+  const rows = await db.getAllAsync<WordRow>(
+    `SELECT * FROM words WHERE is_custom = 0 ${topic ? 'AND topic = ?' : ''}
+      ORDER BY jlpt IS NULL, jlpt DESC, id`,
+    ...(topic ? [topic] : []),
+  );
+  return rows.map(toWord);
+}
+
+/** Add a catalog word to your library, or take it out (which also unstars it). */
 export async function setWordSaved(db: SQLiteDatabase, id: number, saved: boolean) {
   await db.runAsync(
-    'UPDATE words SET saved_at = ? WHERE id = ?',
-    saved ? new Date().toISOString() : null, id,
+    'UPDATE words SET saved_at = ?, starred_at = CASE WHEN ? THEN starred_at END WHERE id = ?',
+    saved ? new Date().toISOString() : null, saved ? 1 : 0, id,
+  );
+}
+
+/** ⭐ Star a word to review it. Starring also saves it to your library. */
+export async function setWordStarred(db: SQLiteDatabase, id: number, starred: boolean) {
+  const now = new Date().toISOString();
+  await db.runAsync(
+    `UPDATE words SET starred_at = ?, saved_at = CASE WHEN ? THEN COALESCE(saved_at, ?) ELSE saved_at END
+      WHERE id = ?`,
+    starred ? now : null, starred ? 1 : 0, now, id,
   );
 }
 
 export async function updateWordNotes(db: SQLiteDatabase, id: number, notes: string) {
   await db.runAsync('UPDATE words SET notes = ? WHERE id = ?', notes, id);
+}
+
+/** Save a word you typed in. Returns its new id. */
+export async function insertWord(db: SQLiteDatabase, input: WordInput): Promise<number> {
+  const now = new Date().toISOString();
+  let id = 0;
+  await db.withTransactionAsync(async () => {
+    const result = await db.runAsync(
+      `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, jlpt, notes,
+                          is_custom, saved_at, starred_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
+      input.meaningZh, input.pos, input.jlpt, input.notes, now, input.starred ? now : null,
+    );
+    id = result.lastInsertRowId;
+    await saveExample(db, id, input);
+  });
+  return id;
+}
+
+export async function updateWord(db: SQLiteDatabase, id: number, input: WordInput) {
+  const existing = await getWord(db, id);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `UPDATE words SET word = ?, furigana = ?, reading = ?, meaning_en = ?, meaning_zh = ?,
+                        pos = ?, jlpt = ?, notes = ?, starred_at = ?
+        WHERE id = ?`,
+      input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
+      input.meaningZh, input.pos, input.jlpt, input.notes,
+      input.starred ? (existing?.starredAt ?? new Date().toISOString()) : null, id,
+    );
+    await saveExample(db, id, input);
+  });
+}
+
+/** Your own example sentence: added once, then shown like the built-in ones. */
+async function saveExample(db: SQLiteDatabase, wordId: number, input: WordInput) {
+  if (!input.example?.ja.trim()) return;
+  const ja = markTarget(input.example.ja.trim(), input.word);
+  const exists = await db.getFirstAsync('SELECT 1 FROM sentences WHERE word_id = ? AND ja = ?', wordId, ja);
+  if (exists) return;
+  const translation = input.example.translation.trim();
+  await db.runAsync(
+    'INSERT INTO sentences (word_id, ja, en, zh, seen) VALUES (?, ?, ?, ?, 1)',
+    wordId, ja, translation, translation,
+  );
+}
+
+/** Wrap the first appearance of the word in {braces}, so it gets highlighted. */
+function markTarget(sentence: string, word: string): string {
+  return sentence.includes(word) ? sentence.replace(word, `{${word}}`) : sentence;
+}
+
+/** Delete a word you typed in yourself, with its sentences and history. */
+export async function deleteWord(db: SQLiteDatabase, id: number) {
+  await db.runAsync('DELETE FROM words WHERE id = ? AND is_custom = 1', id);
 }
 
 /**
@@ -126,7 +256,7 @@ export async function getShownSentences(db: SQLiteDatabase, wordId: number): Pro
 }
 
 /**
- * "Generate another example": reveal the next unseen sentence from the bank.
+ * "Show another example": reveal the next unseen sentence from the bank.
  * Returns null when the bank for this word is used up.
  */
 export async function revealNextSentence(db: SQLiteDatabase, wordId: number): Promise<Sentence | null> {
@@ -151,137 +281,34 @@ export async function setSentenceFavorite(db: SQLiteDatabase, id: number, favori
   await db.runAsync('UPDATE sentences SET favorite = ? WHERE id = ?', favorite ? 1 : 0, id);
 }
 
-// ── Dashboard ────────────────────────────────────────────────
+// ── Review ───────────────────────────────────────────────────
 
-/** How many new words were started today, for the daily goal ring. */
-export async function countLearnedToday(db: SQLiteDatabase, now = new Date()): Promise<number> {
-  const row = await db.getFirstAsync<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM cards WHERE learned_day = ?',
-    toLocalDay(now),
-  );
-  return row?.n ?? 0;
-}
-
-export async function countDueReviews(db: SQLiteDatabase, now = new Date()): Promise<number> {
-  const row = await db.getFirstAsync<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM cards WHERE due <= ?',
-    now.toISOString(),
-  );
-  return row?.n ?? 0;
-}
-
-/**
- * Consecutive days with any study (learning or reviewing), counting back from today.
- * If you haven't studied yet today, the streak from yesterday still counts.
- */
-export async function getStreak(db: SQLiteDatabase, now = new Date()): Promise<number> {
-  const rows = await db.getAllAsync<{ day: string }>(
-    'SELECT day FROM review_logs UNION SELECT learned_day AS day FROM cards',
-  );
-  const days = new Set(rows.map((r) => r.day));
-  let cursor = days.has(toLocalDay(now)) ? now : addDays(now, -1);
-  let streak = 0;
-  while (days.has(toLocalDay(cursor))) {
-    streak++;
-    cursor = addDays(cursor, -1);
-  }
-  return streak;
-}
-
-/** Suggested new words: ones you saved but haven't learned, then easiest JLPT level first. */
-export async function getRecommendedWords(db: SQLiteDatabase, limit: number): Promise<Word[]> {
+/** All ⭐ starred words, in random order, for a review session. */
+export async function getStarredShuffled(db: SQLiteDatabase): Promise<Word[]> {
   const rows = await db.getAllAsync<WordRow>(
-    `SELECT w.* FROM words w
-      WHERE NOT EXISTS (SELECT 1 FROM cards c WHERE c.word_id = w.id)
-      ORDER BY w.saved_at IS NULL, w.jlpt IS NULL, w.jlpt DESC, w.id
-      LIMIT ?`,
-    limit,
+    'SELECT * FROM words WHERE starred_at IS NOT NULL ORDER BY RANDOM()',
   );
   return rows.map(toWord);
 }
 
-/** Words you keep forgetting: lapsed at least once, or that FSRS rates as hard. */
-export async function getWeakWords(db: SQLiteDatabase, limit: number): Promise<WeakWord[]> {
-  const rows = await db.getAllAsync<WordRow & { correct: number; total: number }>(
-    `SELECT w.*,
-            (SELECT COUNT(*) FROM review_logs l WHERE l.word_id = w.id AND l.rating > 1) AS correct,
-            (SELECT COUNT(*) FROM review_logs l WHERE l.word_id = w.id) AS total
-       FROM words w JOIN cards c ON c.word_id = w.id
-      WHERE c.lapses > 0 OR c.difficulty >= 7
-      ORDER BY c.lapses DESC, c.difficulty DESC
-      LIMIT ?`,
-    limit,
+export async function countStarred(db: SQLiteDatabase): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM words WHERE starred_at IS NOT NULL',
   );
-  return rows.map((row) => ({
-    word: toWord(row),
-    accuracy: row.total > 0 ? row.correct / row.total : null,
-  }));
+  return row?.n ?? 0;
 }
 
-export async function getRecentlyLearned(db: SQLiteDatabase, limit: number): Promise<Word[]> {
-  const rows = await db.getAllAsync<WordRow>(
-    `SELECT w.* FROM words w JOIN cards c ON c.word_id = w.id
-      ORDER BY c.learned_at DESC
-      LIMIT ?`,
-    limit,
-  );
-  return rows.map(toWord);
-}
-
-/**
- * Today's vocabulary: words started today, topped up with recommendations
- * until there are as many cards as the daily goal.
- */
-export async function getTodayWords(
+/** Remember each answer, so the library can show which words are 苦手 (weak). */
+export async function recordReview(
   db: SQLiteDatabase,
-  goal: number,
+  wordId: number,
+  remembered: boolean,
   now = new Date(),
-): Promise<TodayWord[]> {
-  const learned = await db.getAllAsync<WordRow & { state: number }>(
-    `SELECT w.*, c.state FROM words w JOIN cards c ON c.word_id = w.id
-      WHERE c.learned_day = ?
-      ORDER BY c.learned_at`,
-    toLocalDay(now),
+) {
+  await db.runAsync(
+    'INSERT INTO review_logs (word_id, rating, state, reviewed_at, day) VALUES (?, ?, 0, ?, ?)',
+    wordId, remembered ? 3 : 1, now.toISOString(), toLocalDay(now),
   );
-  const today: TodayWord[] = learned.map((row) => ({
-    word: toWord(row),
-    // FSRS state 2 = "Review": the word has graduated from the learning steps.
-    status: row.state === 2 ? 'known' : 'learning',
-  }));
-  const missing = goal - today.length;
-  if (missing > 0) {
-    for (const word of await getRecommendedWords(db, missing)) {
-      today.push({ word, status: 'new' });
-    }
-  }
-  return today;
-}
-
-export type Stats = {
-  /** Words with a memory stable for 3+ weeks (Anki calls these "mature"). */
-  mastered: number;
-  /** Share of reviews in the last 7 days that weren't "Again"; null if no reviews. */
-  retention7d: number | null;
-};
-
-export async function getStats(db: SQLiteDatabase, now = new Date()): Promise<Stats> {
-  const mastered = await db.getFirstAsync<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM cards WHERE state = 2 AND stability >= 21',
-  );
-  const week = await db.getFirstAsync<{ correct: number; total: number }>(
-    `SELECT COALESCE(SUM(rating > 1), 0) AS correct, COUNT(*) AS total
-       FROM review_logs WHERE day > ?`,
-    toLocalDay(addDays(now, -7)),
-  );
-  return {
-    mastered: mastered?.n ?? 0,
-    retention7d: week && week.total > 0 ? week.correct / week.total : null,
-  };
-}
-
-/** The word's spaced-repetition card, or null if it isn't in the review deck yet. */
-export async function getCard(db: SQLiteDatabase, wordId: number): Promise<CardRow | null> {
-  return db.getFirstAsync<CardRow>('SELECT * FROM cards WHERE word_id = ?', wordId);
 }
 
 // ── Settings ─────────────────────────────────────────────────

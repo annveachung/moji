@@ -8,7 +8,7 @@ export const DATABASE_NAME = 'moji.db';
  * Bump this and add a `if (version < N)` block below whenever the schema changes.
  * SQLite remembers the version in `PRAGMA user_version`, so each migration runs once.
  */
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -92,6 +92,20 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         CREATE INDEX idx_review_logs_day ON review_logs(day);
       `);
       await seed(tx);
+    }
+    if (version < 2) {
+      // moji became a notebook: you ⭐ star the words you want to review, instead of
+      // FSRS scheduling them. Words already in the review deck become starred.
+      await tx.execAsync(`
+        ALTER TABLE words ADD COLUMN starred_at TEXT;
+        ALTER TABLE words ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;
+        UPDATE words SET starred_at = (SELECT learned_at FROM cards WHERE cards.word_id = words.id)
+         WHERE id IN (SELECT word_id FROM cards);
+        UPDATE words SET saved_at = COALESCE(saved_at, starred_at) WHERE starred_at IS NOT NULL;
+        DROP TABLE cards;
+        CREATE INDEX idx_words_saved ON words(saved_at);
+        CREATE INDEX idx_review_logs_word ON review_logs(word_id);
+      `);
     }
     await tx.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });
