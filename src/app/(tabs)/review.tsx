@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { AppHeader } from '@/components/app-header';
 import { FuriganaText } from '@/components/furigana-text';
@@ -90,7 +91,7 @@ export default function ReviewScreen() {
   };
 
   return (
-    <View className="flex-1 bg-cream">
+    <View className="flex-1 bg-surface">
       <AppHeader subtitle={t('nav.review')} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
@@ -118,11 +119,11 @@ export default function ReviewScreen() {
                 setRevealed(true);
                 speakJapanese(current.reading);
               }}
-              className="min-h-[320px] items-center justify-center gap-4 overflow-hidden rounded-[28px] bg-paper p-6 shadow-lg shadow-sumi/10">
+              className="min-h-[320px] items-center justify-center gap-4 overflow-hidden rounded-[28px] bg-card p-6 shadow-lg shadow-ink/10">
               <View className="absolute right-3 top-3">
                 <IconButton
                   icon={starred ? 'star' : 'star-border'}
-                  tone={starred ? 'amber' : 'cream'}
+                  tone={starred ? 'star' : 'quiet'}
                   size={36}
                   label={starred ? t('review.unstar') : t('word.star')}
                   onPress={toggleStar}
@@ -133,32 +134,33 @@ export default function ReviewScreen() {
                 <View className="items-center gap-3">
                   <IconButton
                     icon="volume-up"
+                    tone="primary"
                     size={88}
                     label={t('review.playAgain')}
                     onPress={() => speakJapanese(current.reading)}
                   />
-                  <Text className="font-display-medium text-[13px] text-sumi-light">{t('review.listenPrompt')}</Text>
+                  <Text className="font-display-medium text-[13px] text-ink-soft">{t('review.listenPrompt')}</Text>
                 </View>
               ) : (
                 <FuriganaText
                   markup={current.furigana}
                   size={56}
                   showFurigana={settings.showFurigana}
-                  className="font-bold text-sumi"
+                  className="font-bold text-ink"
                   containerClassName="justify-center"
                 />
               )}
 
               {!revealed ? (
-                <View className="flex-row items-center gap-2 rounded-full border border-dashed border-sumi/30 px-4 py-2">
-                  <Icon name="touch-app" size={18} color={colors.sumi.muted} />
-                  <Text className="text-[14px] text-sumi-muted">{t('review.tapToReveal')}</Text>
+                <View className="flex-row items-center gap-2 rounded-full border border-dashed border-ink/30 px-4 py-2">
+                  <Icon name="touch-app" size={18} color={colors.ink.muted} />
+                  <Text className="text-[14px] text-ink-muted">{t('review.tapToReveal')}</Text>
                 </View>
               ) : (
                 <Animated.View entering={FadeIn.duration(250)} style={{ alignSelf: 'stretch' }}>
                   <View className="items-center gap-3">
                     {settings.showRomaji && (
-                      <Text className="text-[14px] font-semibold text-sumi-light">
+                      <Text className="text-[14px] font-semibold text-ink-soft">
                         [ {toRomaji(current.reading)} ]
                       </Text>
                     )}
@@ -171,8 +173,8 @@ export default function ReviewScreen() {
                         onPress={() => speakJapanese(current.reading)}
                       />
                     </View>
-                    <View className="self-stretch rounded-2xl bg-amber/35 p-4">
-                      <Text className="text-center text-[22px] font-bold leading-8 text-sumi">
+                    <View className="self-stretch rounded-2xl bg-primary-soft/60 p-4">
+                      <Text className="text-center text-[22px] font-bold leading-8 text-ink">
                         {meaningFor(current, settings.meaningLanguage)}
                       </Text>
                     </View>
@@ -184,14 +186,14 @@ export default function ReviewScreen() {
             {revealed && example && (
               <Animated.View entering={FadeIn.delay(100).duration(250)}>
                 <Card>
-                  <Text className="font-display text-[12px] text-amber-deep">{t('review.example')}</Text>
+                  <Text className="font-display text-[12px] text-primary">{t('review.example')}</Text>
                   <FuriganaText
                     markup={example.ja}
                     size={17}
                     showFurigana={settings.showFurigana}
-                    targetClassName="font-bold bg-amber/50"
+                    targetClassName="font-bold bg-primary-soft"
                   />
-                  <Text className="text-[13px] text-sumi-light">
+                  <Text className="text-[13px] text-ink-soft">
                     {translationFor(example, settings.meaningLanguage)}
                   </Text>
                 </Card>
@@ -202,7 +204,7 @@ export default function ReviewScreen() {
               <Animated.View entering={FadeIn.delay(150).duration(250)}>
                 <View className="flex-row gap-3">
                   <StampButton label={t('review.notYet')} icon="replay" tone="quiet" className="flex-1" onPress={() => answer(false)} />
-                  <StampButton label={t('review.gotIt')} icon="check" tone="amber" className="flex-1" onPress={() => answer(true)} />
+                  <StampButton label={t('review.gotIt')} icon="check" tone="primary" className="flex-1" onPress={() => answer(true)} />
                 </View>
               </Animated.View>
             )}
@@ -226,18 +228,18 @@ function RoundEnd({
   const finished = reviewed > 0;
   return (
     <Card className="items-center gap-3 py-10">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-amber">
-        <Icon name={finished ? 'celebration' : 'star-border'} size={32} />
+      <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-soft">
+        <Icon name={finished ? 'celebration' : 'star-border'} size={32} color={colors.primary.DEFAULT} />
       </View>
-      <Text className="font-display text-[22px] text-sumi">
+      <Text className="font-display text-[22px] text-ink">
         {finished ? t('review.doneTitle') : t('review.emptyTitle')}
       </Text>
-      <Text className="px-4 text-center text-[14px] leading-5 text-sumi-muted">
+      <Text className="px-4 text-center text-[14px] leading-5 text-ink-muted">
         {finished ? t('review.doneBody', { count: reviewed }) : t('review.emptyBody')}
       </Text>
       <View className="mt-2 flex-row gap-2">
         <StampButton label={t('review.goLibrary')} tone="quiet" onPress={onLibrary} />
-        {finished && <StampButton label={t('review.again')} icon="replay" tone="amber" onPress={onAgain} />}
+        {finished && <StampButton label={t('review.again')} icon="replay" tone="primary" onPress={onAgain} />}
       </View>
     </Card>
   );
@@ -250,7 +252,7 @@ function ModeSwitch({ mode, onChange }: { mode: 'text' | 'audio'; onChange: (mod
     { value: 'audio' as const, icon: 'headphones' as const, label: t('review.modeAudio') },
   ];
   return (
-    <View className="flex-row rounded-full bg-cream-dark/60 p-1">
+    <View className="flex-row rounded-full bg-surface-highest p-1">
       {options.map((option) => {
         const selected = mode === option.value;
         return (
@@ -260,10 +262,10 @@ function ModeSwitch({ mode, onChange }: { mode: 'text' | 'audio'; onChange: (mod
             accessibilityState={{ selected }}
             onPress={() => onChange(option.value)}
             className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-full py-2 ${
-              selected ? 'bg-paper shadow-sm shadow-sumi/10' : ''
+              selected ? 'bg-card shadow-sm shadow-ink/10' : ''
             }`}>
-            <Icon name={option.icon} size={16} color={selected ? colors.sumi.DEFAULT : colors.sumi.muted} />
-            <Text className={`font-display-semibold text-[13px] ${selected ? 'text-sumi' : 'text-sumi-muted'}`}>
+            <Icon name={option.icon} size={16} color={selected ? colors.ink.DEFAULT : colors.ink.muted} />
+            <Text className={`font-display-semibold text-[13px] ${selected ? 'text-ink' : 'text-ink-muted'}`}>
               {option.label}
             </Text>
           </Pressable>
@@ -288,20 +290,32 @@ function ProgressPanel({
   const { t } = useTranslation();
   const progress = total > 0 ? done / total : 0;
   return (
-    <View className="gap-2 rounded-2xl bg-paper p-3.5 shadow-sm shadow-sumi/10">
+    <View className="gap-2 rounded-2xl bg-card p-3.5 shadow-sm shadow-ink/10">
       <View className="flex-row items-center justify-between">
-        <Text className="font-display text-[18px] text-sumi">
-          {done} <Text className="font-display-medium text-[14px] text-sumi-light">/ {total}</Text>
+        <Text className="font-display text-[18px] text-ink">
+          {done} <Text className="font-display-medium text-[14px] text-ink-soft">/ {total}</Text>
         </Text>
         <View className="flex-row items-center gap-2">
           <Pill label={t('review.remaining', { count: remaining })} />
           {accuracy !== null && (
-            <Pill label={t('review.accuracy', { percent: Math.round(accuracy * 100) })} icon="verified" tone="amber" />
+            <Pill label={t('review.accuracy', { percent: Math.round(accuracy * 100) })} icon="verified" tone="matcha" />
           )}
         </View>
       </View>
-      <View className="h-2.5 overflow-hidden rounded-full bg-cream-dark/70">
-        <View className="h-full rounded-full bg-amber" style={{ width: `${Math.round(progress * 100)}%` }} />
+      <View className="h-3 overflow-hidden rounded-full bg-surface-high">
+        {/* The filled part is a gradient from vermilion to mustard, drawn with SVG. */}
+        <View className="h-full overflow-hidden rounded-full" style={{ width: `${Math.max(Math.round(progress * 100), 4)}%` }}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor={colors.primary.DEFAULT} />
+                <Stop offset="0.6" stopColor={colors.primary.bright} />
+                <Stop offset="1" stopColor={colors.mustard.dim} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#bar)" />
+          </Svg>
+        </View>
       </View>
     </View>
   );

@@ -56,8 +56,6 @@ const ja: typeof en = {
     addPrompt: '新しい単語を追加…',
     addHint: 'アニメや本、街で出会った言葉を書き留めよう。',
     reviewTitle: '⭐ 復習リスト',
-    starred_one: '{{count}}語',
-    starred_other: '{{count}}語',
     startReview: '始める',
     noStarred: '単語に⭐をつけると、ここから復習できます。',
     recentTitle: '最近追加した単語',
@@ -69,15 +67,14 @@ const ja: typeof en = {
     status: {
       all: '全部',
       starred: '⭐ 復習',
-      weak: '苦手',
-      stats: {
+    },
+    stats: {
       words: '語',
       starred: '⭐ 復習',
       remembered: '定着率',
     },
     badge: {
       starred: '復習',
-      weak: '苦手',
       known: '習得',
     },
     listView: 'リスト表示',
@@ -86,7 +83,6 @@ const ja: typeof en = {
     added: '{{when}}に追加',
     quote: 'ことばは旅の杖',
     quoteMeaning: '言葉は旅を支える杖。これからも集めていこう！',
-  },
     allPos: '全品詞',
     allJlpt: '全レベル',
     count_one: '{{count}}語',
@@ -190,7 +186,6 @@ const ja: typeof en = {
     uiLanguage: '表示言語',
     meaningLanguage: '意味の言語',
     showFurigana: 'ふりがなを表示',
-    showRomaji: 'ローマ字を表示',
   },
 };
 

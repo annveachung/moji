@@ -18,18 +18,18 @@ export function WordRow({ word, right }: { word: Word; right?: ReactNode }) {
       accessibilityRole="button"
       accessibilityLabel={`${word.word} ${word.reading}`}
       onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(word.id) } })}
-      className="flex-row items-center gap-3 rounded-2xl bg-paper px-4 py-3 shadow-md shadow-sumi/10 active:opacity-70">
+      className="flex-row items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-md shadow-ink/10 active:opacity-70">
       <View className="flex-1 gap-0.5">
         <FuriganaText
           markup={word.furigana}
           size={22}
           showFurigana={settings.showFurigana}
-          className="font-bold text-sumi"
+          className="font-bold text-ink"
         />
         {!settings.showFurigana && word.reading !== word.word && (
-          <Text className="text-[12px] text-sumi-light">{word.reading}</Text>
+          <Text className="text-[12px] text-ink-soft">{word.reading}</Text>
         )}
-        <Text numberOfLines={1} className="text-[14px] text-sumi-light">
+        <Text numberOfLines={1} className="text-[14px] text-ink-soft">
           {meaningFor(word, settings.meaningLanguage)}
         </Text>
       </View>

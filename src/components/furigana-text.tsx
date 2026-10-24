@@ -29,11 +29,11 @@ export function FuriganaText({
   markup,
   showFurigana = true,
   size = 18,
-  className = 'text-sumi',
+  className = 'text-ink',
   targetClassName = '',
   hideTarget = false,
   containerClassName = '',
-  rubyClassName = 'text-amber-deep',
+  rubyClassName = 'text-primary',
 }: Props) {
   const rubySize = Math.round(size * 0.5);
   const segments = parseFurigana(markup);

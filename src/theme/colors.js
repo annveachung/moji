@@ -1,16 +1,19 @@
 /**
- * moji's palette: your three theme colors (cream, amber, sumi) in the Kotoba washi style:
- * white paper cards on cream, amber accents, vermilion only for warnings.
+ * moji's palette, from the Stitch "Japanese Word Vault" design (Kotoba Washi Minimal).
  * Plain JS so tailwind.config.js and the TypeScript code can share one source.
- * In className use e.g. `bg-cream`, `bg-cream-light`, `text-sumi-muted`, `border-amber`.
+ * In className use e.g. `bg-surface`, `bg-card`, `text-ink-soft`, `bg-primary-soft`.
  */
 module.exports = {
-  cream: { DEFAULT: '#FAEBCD', light: '#FCF5E8', dark: '#EED8B5' },
-  // Card surface: near-white paper that sits on the cream background.
-  paper: '#FFFCF6',
-  // deep: readable amber for small text like furigana.
-  amber: { DEFAULT: '#F7C873', hover: '#EDB95A', dark: '#B07A1A', deep: '#8C5A0B' },
-  sumi: { DEFAULT: '#434343', light: '#616161', muted: '#6E6E6E' },
-  // 朱 (shu): vermilion, the color of hanko seals. Used sparingly for warnings and "weak".
-  shu: { DEFAULT: '#AB3425', light: '#FFDAD4' },
+  // Warm washi paper. DEFAULT is the page; the others are progressively darker blocks.
+  surface: { DEFAULT: '#FEF8F4', low: '#F8F2EF', mid: '#F3EDE9', high: '#EDE7E3', highest: '#E7E1DE' },
+  card: '#FFFFFF',
+  // Text: DEFAULT for main text, soft for secondary, muted for hints and placeholders.
+  ink: { DEFAULT: '#1D1B19', soft: '#59413C', muted: '#8C716B' },
+  // Vermilion, like a hanko seal: main buttons, furigana, highlights.
+  primary: { DEFAULT: '#A9311B', bright: '#CA4931', soft: '#FFDAD3', deep: '#8A1B07' },
+  // Matcha green: things you know.
+  matcha: { DEFAULT: '#326A38', soft: '#B1EFB0', ink: '#366E3C' },
+  // Mustard: JLPT levels, stars, sticky notes.
+  mustard: { DEFAULT: '#745800', soft: '#FFDF97', dim: '#EEC14D' },
+  error: { DEFAULT: '#BA1A1A', soft: '#FFDAD6' },
 };

@@ -94,13 +94,13 @@ export default function WordFormScreen() {
   const example = form.example ?? { ja: '', translation: '' };
 
   return (
-    <KeyboardAvoidingView behavior="padding" className="flex-1 bg-cream">
+    <KeyboardAvoidingView behavior="padding" className="flex-1 bg-surface">
       {/* Top bar: Cancel · title · Save */}
-      <View className="flex-row items-center justify-between border-b border-sumi/10 px-4 py-3">
+      <View className="flex-row items-center justify-between border-b border-ink/10 px-4 py-3">
         <Pressable accessibilityRole="button" hitSlop={10} onPress={() => router.back()}>
-          <Text className="text-[16px] text-sumi-light">{t('common.cancel')}</Text>
+          <Text className="text-[16px] text-ink-soft">{t('common.cancel')}</Text>
         </Pressable>
-        <Text className="font-display text-[16px] text-sumi">
+        <Text className="font-display text-[16px] text-ink">
           {editingId === null ? t('form.addTitle') : t('form.editTitle')}
         </Text>
         <Pressable
@@ -108,8 +108,8 @@ export default function WordFormScreen() {
           hitSlop={10}
           disabled={saving}
           onPress={save}
-          className="rounded-full bg-sumi px-4 py-1.5 active:opacity-80">
-          <Text className="font-display text-[15px] text-amber">{t('common.save')}</Text>
+          className="rounded-full bg-primary px-4 py-1.5 active:opacity-80">
+          <Text className="font-display text-[15px] text-white">{t('common.save')}</Text>
         </Pressable>
       </View>
 
@@ -118,16 +118,16 @@ export default function WordFormScreen() {
         contentContainerClassName="w-full max-w-[720px] self-center gap-5 p-5"
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Live preview: shows the furigana that will be generated */}
-        <View className="min-h-[110px] items-center justify-center gap-1 rounded-[28px] bg-paper p-4 shadow-md shadow-sumi/10">
+        <View className="min-h-[110px] items-center justify-center gap-1 rounded-[28px] bg-card p-4 shadow-md shadow-ink/10">
           {preview ? (
             <>
-              <FuriganaText markup={preview} size={40} className="font-bold text-sumi" containerClassName="justify-center" />
+              <FuriganaText markup={preview} size={40} className="font-bold text-ink" containerClassName="justify-center" />
               {KANA_ONLY.test(form.reading.trim()) && (
-                <Text className="text-[13px] text-sumi-light">{toRomaji(form.reading.trim())}</Text>
+                <Text className="text-[13px] text-ink-soft">{toRomaji(form.reading.trim())}</Text>
               )}
             </>
           ) : (
-            <Text className="text-[13px] text-sumi-muted">{t('form.preview')}</Text>
+            <Text className="text-[13px] text-ink-muted">{t('form.preview')}</Text>
           )}
         </View>
 
@@ -194,18 +194,18 @@ export default function WordFormScreen() {
           <Input value={form.notes} onChangeText={(notes) => update({ notes })} multiline />
         </Field>
 
-        <View className="min-h-[52px] flex-row items-center justify-between rounded-2xl bg-paper px-4 shadow-sm shadow-sumi/10">
-          <Text className="text-[15px] font-semibold text-sumi">{t('form.star')}</Text>
+        <View className="min-h-[52px] flex-row items-center justify-between rounded-2xl bg-card px-4 shadow-sm shadow-ink/10">
+          <Text className="text-[15px] font-semibold text-ink">{t('form.star')}</Text>
           <Switch
             value={form.starred}
             onValueChange={(starred) => update({ starred })}
-            trackColor={{ true: colors.amber.DEFAULT, false: colors.cream.dark }}
-            ios_backgroundColor={colors.cream.dark}
+            trackColor={{ true: colors.primary.DEFAULT, false: colors.surface.highest }}
+            ios_backgroundColor={colors.surface.highest}
           />
         </View>
 
         <View className="flex-row items-center justify-center gap-1.5">
-          <Icon name="auto-awesome" size={14} color={colors.sumi.muted} />
+          <Icon name="auto-awesome" size={14} color={colors.ink.muted} />
           <Pill label={t('form.aiSoon')} tone="outline" />
         </View>
       </ScrollView>
@@ -217,11 +217,11 @@ function Field({ label, hint, error, children }: { label: string; hint?: string;
   return (
     <View className="gap-2">
       <View className="flex-row items-baseline justify-between px-1">
-        <Text className="font-display text-[13px] text-sumi">{label}</Text>
-        {hint && <Text className="text-[11px] text-sumi-muted">{hint}</Text>}
+        <Text className="font-display text-[13px] text-ink">{label}</Text>
+        {hint && <Text className="text-[11px] text-ink-muted">{hint}</Text>}
       </View>
       {children}
-      {error && <Text className="px-1 text-[12px] font-semibold text-shu">{error}</Text>}
+      {error && <Text className="px-1 text-[12px] font-semibold text-error">{error}</Text>}
     </View>
   );
 }
@@ -241,10 +241,10 @@ function Input({
     <TextInput
       {...props}
       multiline={multiline}
-      placeholderTextColor={colors.sumi.muted}
+      placeholderTextColor={colors.ink.muted}
       autoCorrect={false}
       autoCapitalize="none"
-      className={`rounded-2xl bg-paper px-4 text-sumi shadow-sm shadow-sumi/10 ${
+      className={`rounded-2xl bg-card px-4 text-ink shadow-sm shadow-ink/10 ${
         large ? 'py-3 text-[22px] font-bold' : 'py-3 text-[16px]'
       } ${multiline ? 'min-h-[72px]' : ''}`}
       style={multiline ? { textAlignVertical: 'top' } : undefined}

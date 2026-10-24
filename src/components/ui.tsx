@@ -6,8 +6,8 @@ import colors from '@/theme/colors';
 
 /**
  * Small building blocks shared by every screen, so the design stays consistent.
- * Style: white paper cards with soft shadows on cream, amber accents,
- * tactile "stamp" buttons, and Plus Jakarta Sans for labels.
+ * Style (Kotoba Washi Minimal): white cards with soft shadows on warm washi paper,
+ * vermilion for actions, mustard for stars and levels, matcha for things you know.
  */
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -15,7 +15,7 @@ export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 export function Icon({
   name,
   size = 20,
-  color = colors.sumi.DEFAULT,
+  color = colors.ink.DEFAULT,
 }: {
   name: IconName;
   size?: number;
@@ -24,27 +24,26 @@ export function Icon({
   return <MaterialIcons name={name} size={size} color={color} />;
 }
 
-/** The paper card every section sits on: no outline, just a soft shadow. */
+/** The card every section sits on: white, no outline, a soft shadow. */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <View className={`gap-3 rounded-card bg-paper p-4 shadow-md shadow-sumi/10 ${className}`}>{children}</View>
-  );
+  return <View className={`gap-3 rounded-card bg-card p-4 shadow-md shadow-ink/10 ${className}`}>{children}</View>;
 }
 
-type PillTone = 'cream' | 'amber' | 'sumi' | 'shu' | 'outline';
+export type PillTone = 'neutral' | 'primary' | 'mustard' | 'matcha' | 'error' | 'outline';
 
 const PILL_TONES: Record<PillTone, { box: string; text: string; icon: string }> = {
-  cream: { box: 'bg-cream', text: 'text-sumi', icon: colors.sumi.DEFAULT },
-  amber: { box: 'bg-amber/60', text: 'text-sumi', icon: colors.sumi.DEFAULT },
-  sumi: { box: 'bg-sumi', text: 'text-cream-light', icon: colors.cream.light },
-  shu: { box: 'bg-shu-light', text: 'text-shu', icon: colors.shu.DEFAULT },
-  outline: { box: 'border border-sumi/20', text: 'text-sumi-light', icon: colors.sumi.light },
+  neutral: { box: 'bg-surface-high', text: 'text-ink-soft', icon: colors.ink.soft },
+  primary: { box: 'bg-primary-soft', text: 'text-primary', icon: colors.primary.DEFAULT },
+  mustard: { box: 'bg-mustard-soft', text: 'text-mustard', icon: colors.mustard.DEFAULT },
+  matcha: { box: 'bg-matcha-soft', text: 'text-matcha-ink', icon: colors.matcha.ink },
+  error: { box: 'bg-error-soft', text: 'text-error', icon: colors.error.DEFAULT },
+  outline: { box: 'border border-ink/15', text: 'text-ink-soft', icon: colors.ink.soft },
 };
 
 /** A small rounded label, e.g. "JLPT N5" or "名詞". */
 export function Pill({
   label,
-  tone = 'cream',
+  tone = 'neutral',
   icon,
 }: {
   label: string;
@@ -60,12 +59,21 @@ export function Pill({
   );
 }
 
+type IconButtonTone = 'primary' | 'soft' | 'quiet' | 'star';
+
+const ICON_BUTTON_TONES: Record<IconButtonTone, { box: string; icon: string }> = {
+  primary: { box: 'bg-primary', icon: '#FFFFFF' },
+  soft: { box: 'bg-primary-soft', icon: colors.primary.DEFAULT },
+  quiet: { box: 'bg-surface-high', icon: colors.ink.soft },
+  star: { box: 'bg-mustard-soft', icon: colors.mustard.DEFAULT },
+};
+
 /** A round button with an icon. */
 export function IconButton({
   icon,
   onPress,
   label,
-  tone = 'amber',
+  tone = 'quiet',
   size = 40,
   disabled = false,
 }: {
@@ -73,15 +81,11 @@ export function IconButton({
   onPress: () => void;
   /** Read aloud by VoiceOver; buttons with only an icon need one. */
   label: string;
-  tone?: 'amber' | 'sumi' | 'cream';
+  tone?: IconButtonTone;
   size?: number;
   disabled?: boolean;
 }) {
-  const box = {
-    amber: 'bg-amber',
-    sumi: 'bg-sumi',
-    cream: 'bg-cream',
-  }[tone];
+  const style = ICON_BUTTON_TONES[tone];
   return (
     <Pressable
       accessibilityRole="button"
@@ -90,19 +94,19 @@ export function IconButton({
       disabled={disabled}
       hitSlop={8}
       style={{ width: size, height: size }}
-      className={`items-center justify-center rounded-full active:scale-90 ${box} ${disabled ? 'opacity-40' : ''}`}>
-      <Icon name={icon} size={size * 0.5} color={tone === 'sumi' ? colors.amber.DEFAULT : colors.sumi.DEFAULT} />
+      className={`items-center justify-center rounded-full active:scale-90 ${style.box} ${disabled ? 'opacity-40' : ''}`}>
+      <Icon name={icon} size={size * 0.5} color={style.icon} />
     </Pressable>
   );
 }
 
-type StampTone = 'amber' | 'sumi' | 'quiet' | 'shu';
+type StampTone = 'primary' | 'ink' | 'quiet' | 'error';
 
 const STAMP_TONES: Record<StampTone, { box: string; text: string; icon: string }> = {
-  amber: { box: 'bg-amber border-amber-dark', text: 'text-sumi', icon: colors.sumi.DEFAULT },
-  sumi: { box: 'bg-sumi border-black', text: 'text-amber', icon: colors.amber.DEFAULT },
-  quiet: { box: 'bg-paper border-cream-dark', text: 'text-sumi', icon: colors.sumi.DEFAULT },
-  shu: { box: 'bg-paper border-shu/40', text: 'text-shu', icon: colors.shu.DEFAULT },
+  primary: { box: 'bg-primary border-primary-deep', text: 'text-white', icon: '#FFFFFF' },
+  ink: { box: 'bg-ink border-black', text: 'text-white', icon: '#FFFFFF' },
+  quiet: { box: 'bg-card border-surface-highest', text: 'text-ink', icon: colors.ink.soft },
+  error: { box: 'bg-card border-error/40', text: 'text-error', icon: colors.error.DEFAULT },
 };
 
 /**
@@ -112,7 +116,7 @@ const STAMP_TONES: Record<StampTone, { box: string; text: string; icon: string }
 export function StampButton({
   label,
   icon,
-  tone = 'amber',
+  tone = 'primary',
   onPress,
   disabled = false,
   className = '',
@@ -139,22 +143,22 @@ export function StampButton({
   );
 }
 
-/** Title row at the top of a card: a small amber bar, the title, and an optional right side. */
+/** Title row at the top of a card: a small colored bar, the title, and an optional right side. */
 export function SectionHeader({
   title,
   right,
-  accent = 'amber',
+  accent = 'primary',
 }: {
   title: string;
   right?: ReactNode;
-  accent?: 'amber' | 'sumi' | 'shu';
+  accent?: 'primary' | 'matcha' | 'mustard' | 'error';
 }) {
-  const bar = { amber: 'bg-amber', sumi: 'bg-sumi', shu: 'bg-shu' }[accent];
+  const bar = { primary: 'bg-primary', matcha: 'bg-matcha', mustard: 'bg-mustard', error: 'bg-error' }[accent];
   return (
     <View className="flex-row items-center justify-between gap-2">
       <View className="flex-1 flex-row items-center gap-2">
         <View className={`h-4 w-1.5 rounded-full ${bar}`} />
-        <Text className="font-display text-[16px] text-sumi">{title}</Text>
+        <Text className="font-display text-[16px] text-ink">{title}</Text>
       </View>
       {right}
     </View>
@@ -164,22 +168,22 @@ export function SectionHeader({
 /** Friendly message for a section that has nothing to show yet. */
 export function EmptyState({ icon, message }: { icon: IconName; message: string }) {
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl bg-cream/60 p-4">
-      <Icon name={icon} size={22} color={colors.sumi.muted} />
-      <Text className="flex-1 text-[13px] leading-5 text-sumi-muted">{message}</Text>
+    <View className="flex-row items-center gap-3 rounded-2xl bg-surface-low p-4">
+      <Icon name={icon} size={22} color={colors.ink.muted} />
+      <Text className="flex-1 text-[13px] leading-5 text-ink-soft">{message}</Text>
     </View>
   );
 }
 
-/** A tappable filter chip; dark when selected. */
+/** A tappable filter chip; vermilion when selected. */
 export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      className={`rounded-full px-3.5 py-2 ${selected ? 'bg-sumi' : 'bg-paper shadow-sm shadow-sumi/10'}`}>
-      <Text className={`font-display-semibold text-[12px] ${selected ? 'text-amber' : 'text-sumi-light'}`}>{label}</Text>
+      className={`rounded-full px-3.5 py-2 shadow-sm shadow-ink/10 ${selected ? 'bg-primary' : 'bg-card'}`}>
+      <Text className={`font-display-semibold text-[12px] ${selected ? 'text-white' : 'text-ink-soft'}`}>{label}</Text>
     </Pressable>
   );
 }

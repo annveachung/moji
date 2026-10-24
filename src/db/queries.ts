@@ -81,14 +81,6 @@ function toSentence(row: SentenceRow): Sentence {
   };
 }
 
-/**
- * A word is "weak" once it has been reviewed at least twice and you remembered it
- * less than 60% of the time.
- */
-const WEAK_CONDITION = `(
-  SELECT COUNT(*) >= 2 AND AVG(l.rating > 1) < 0.6 FROM review_logs l WHERE l.word_id = w.id
-)`;
-
 // ── Words ────────────────────────────────────────────────────
 
 export async function getWord(db: SQLiteDatabase, id: number): Promise<Word | null> {
@@ -116,15 +108,8 @@ function toLibraryWord(row: LibraryRow): LibraryWord {
     reviews: row.reviews,
     accuracy,
     lastReviewedAt: row.last_reviewed_at,
-    // Same rule as WEAK_CONDITION; "known" = reviewed 3+ times, right at least 80%.
-    status:
-      accuracy === null
-        ? null
-        : row.reviews >= 2 && accuracy < 0.6
-          ? 'weak'
-          : row.reviews >= 3 && accuracy >= 0.8
-            ? 'known'
-            : null,
+    // "known" = reviewed 3+ times, right at least 80% of the time.
+    status: accuracy !== null && row.reviews >= 3 && accuracy >= 0.8 ? 'known' : null,
   };
 }
 
@@ -145,8 +130,11 @@ export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): P
     where.push('w.jlpt = ?');
     params.push(filters.jlpt);
   }
+  if (filters.topic) {
+    where.push('w.topic = ?');
+    params.push(filters.topic);
+  }
   if (filters.status === 'starred') where.push('w.starred_at IS NOT NULL');
-  if (filters.status === 'weak') where.push(WEAK_CONDITION);
 
   const rows = await db.getAllAsync<LibraryRow>(
     `SELECT w.*,
@@ -174,9 +162,18 @@ export async function getLibraryStats(db: SQLiteDatabase): Promise<LibraryStats>
     `SELECT COALESCE(SUM(l.rating > 1), 0) AS correct, COUNT(*) AS total
        FROM review_logs l JOIN words w ON w.id = l.word_id WHERE w.saved_at IS NOT NULL`,
   );
+  // "Known" uses the same rule as the badge on each card.
+  const statuses = await db.getFirstAsync<{ known: number }>(
+    `SELECT COALESCE(SUM(n >= 3 AND acc >= 0.8), 0) AS known
+       FROM (SELECT COUNT(l.id) AS n, AVG(l.rating > 1) AS acc
+               FROM words w JOIN review_logs l ON l.word_id = w.id
+              WHERE w.saved_at IS NOT NULL
+              GROUP BY w.id)`,
+  );
   return {
     total: row?.total ?? 0,
     starred: row?.starred ?? 0,
+    known: statuses?.known ?? 0,
     accuracy: reviews && reviews.total > 0 ? reviews.correct / reviews.total : null,
   };
 }
@@ -358,7 +355,7 @@ export async function countStarred(db: SQLiteDatabase): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** Remember each answer, so the library can show which words are 苦手 (weak). */
+/** Remember each answer, so the library can show which words you know (習得). */
 export async function recordReview(
   db: SQLiteDatabase,
   wordId: number,

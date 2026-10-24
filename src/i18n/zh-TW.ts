@@ -55,8 +55,6 @@ const zhTW: typeof en = {
     addPrompt: '新增單字…',
     addHint: '記下在動漫、書裡、街上遇到的日文。',
     reviewTitle: '⭐ 複習清單',
-    starred_one: '{{count}} 個單字',
-    starred_other: '{{count}} 個單字',
     startReview: '開始',
     noStarred: '替單字加上 ⭐，就能在這裡複習。',
     recentTitle: '最近新增',
@@ -68,15 +66,14 @@ const zhTW: typeof en = {
     status: {
       all: '全部',
       starred: '⭐ 複習',
-      weak: '弱點',
-      stats: {
+    },
+    stats: {
       words: '個單字',
       starred: '⭐ 複習',
       remembered: '記憶率',
     },
     badge: {
       starred: '複習',
-      weak: '弱點',
       known: '已熟記',
     },
     listView: '列表檢視',
@@ -85,7 +82,6 @@ const zhTW: typeof en = {
     added: '{{when}}新增',
     quote: 'ことばは旅の杖',
     quoteMeaning: '語言是旅途中的手杖，繼續收集吧！',
-  },
     allPos: '全部詞性',
     allJlpt: '全部級數',
     count_one: '{{count}} 個單字',
@@ -189,7 +185,6 @@ const zhTW: typeof en = {
     uiLanguage: '介面語言',
     meaningLanguage: '釋義語言',
     showFurigana: '顯示振假名',
-    showRomaji: '顯示羅馬拼音',
   },
 };
 

@@ -41,7 +41,7 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: colors.cream.DEFAULT },
+            contentStyle: { backgroundColor: colors.surface.DEFAULT },
           }}>
           {/* The add/edit form slides up as a sheet. */}
           <Stack.Screen name="word-form" options={{ presentation: 'modal' }} />
