@@ -1,3 +1,5 @@
+import { toHiragana } from './romaji';
+
 /**
  * Furigana markup (Anki style):
  *
@@ -17,6 +19,7 @@ const KANJI = '\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF々〆ヶ';
 const RUBY_PATTERN = new RegExp(`([${KANJI}]+)\\[([^\\]]+)\\]`, 'g');
 const TARGET_PATTERN = /\{([^}]*)\}/g;
 const KANJI_CHAR = new RegExp(`[${KANJI}]`);
+const KANJI_OR_KANA_RUN = new RegExp(`[${KANJI}]+|[^${KANJI}]+`, 'g');
 
 function parseRuby(text: string, target: boolean): FuriganaSegment[] {
   const segments: FuriganaSegment[] = [];
@@ -59,4 +62,25 @@ export function furiganaToReading(markup: string): string {
 /** The distinct kanji in a string, e.g. 大丈夫 → ['大', '丈', '夫'] */
 export function kanjiIn(text: string): string[] {
   return [...new Set([...text].filter((c) => KANJI_CHAR.test(c)))];
+}
+
+/**
+ * Build furigana markup from a word and its reading, so you never type brackets:
+ *   makeFurigana('乗り換え', 'のりかえ') → '乗[の]り換[か]え'
+ * The kana in the word act as anchors: each kanji run gets the part of the
+ * reading between them. If the reading doesn't fit the word, no furigana is added.
+ */
+export function makeFurigana(word: string, reading: string): string {
+  const runs = word.match(KANJI_OR_KANA_RUN) ?? [];
+  if (!runs.some((run) => KANJI_CHAR.test(run))) return word;
+
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = runs
+    .map((run) => (KANJI_CHAR.test(run) ? '(.+?)' : escape(toHiragana(run))))
+    .join('');
+  const match = toHiragana(reading).match(new RegExp(`^${pattern}$`));
+  if (!match) return word;
+
+  let group = 1;
+  return runs.map((run) => (KANJI_CHAR.test(run) ? `${run}[${match[group++]}]` : run)).join('');
 }

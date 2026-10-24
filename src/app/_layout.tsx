@@ -37,8 +37,10 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: colors.cream.DEFAULT },
-          }}
-        />
+          }}>
+          {/* The add/edit form slides up as a sheet. */}
+          <Stack.Screen name="word-form" options={{ presentation: 'modal' }} />
+        </Stack>
       </SettingsProvider>
     </SQLiteProvider>
   );

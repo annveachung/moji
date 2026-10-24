@@ -2,28 +2,24 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, use, useEffect, useState, type ReactNode } from 'react';
 
 import { getAllSettings, setSetting } from '@/db/queries';
-import type { Language } from '@/db/types';
+import type { Language, UiLanguage } from '@/db/types';
 import i18n, { deviceLanguage } from '@/i18n';
 
 export type Settings = {
-  /** Language of buttons, labels and menus. */
-  uiLanguage: Language;
+  /** Language of buttons, labels and menus. Japanese by default, for immersion. */
+  uiLanguage: UiLanguage;
   /** Which meaning to show for words and sentences (only one at a time, to save space). */
   meaningLanguage: Language;
   showFurigana: boolean;
   showRomaji: boolean;
-  /** New words to learn per day. */
-  dailyGoal: number;
 };
 
 function defaultSettings(): Settings {
-  const language = deviceLanguage();
   return {
-    uiLanguage: language,
-    meaningLanguage: language,
+    uiLanguage: 'ja',
+    meaningLanguage: deviceLanguage(),
     showFurigana: true,
     showRomaji: false,
-    dailyGoal: 3,
   };
 }
 
