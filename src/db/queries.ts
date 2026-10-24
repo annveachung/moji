@@ -4,12 +4,14 @@ import { toLocalDay } from '@/lib/date';
 import { kanjiIn, makeFurigana } from '@/lib/furigana';
 
 import type {
+  CollectionFilter,
   LibraryFilters,
   LibraryStats,
   LibraryWord,
   RelatedWord,
   RelationKind,
   Sentence,
+  Suggestion,
   Topic,
   Word,
   WordInput,
@@ -130,7 +132,9 @@ export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): P
     where.push('w.jlpt = ?');
     params.push(filters.jlpt);
   }
-  if (filters.topic) {
+  if (filters.topic === 'other') {
+    where.push('w.topic IS NULL');
+  } else if (filters.topic) {
     where.push('w.topic = ?');
     params.push(filters.topic);
   }
@@ -186,14 +190,132 @@ export async function getRecentlyAdded(db: SQLiteDatabase, limit: number): Promi
   return rows.map(toWord);
 }
 
-/** Starter catalog words for 発見, optionally for one topic. */
-export async function getCatalog(db: SQLiteDatabase, topic: Topic | null): Promise<Word[]> {
+/** SQL conditions for a collection of catalog words. */
+function collectionWhere(filter: CollectionFilter): { sql: string; params: (string | number)[] } {
+  const where = ['is_custom = 0'];
+  const params: (string | number)[] = [];
+  if (filter.topic === 'other') where.push('topic IS NULL');
+  else if (filter.topic) {
+    where.push('topic = ?');
+    params.push(filter.topic);
+  }
+  if (filter.jlpt) {
+    where.push('jlpt = ?');
+    params.push(filter.jlpt);
+  }
+  if (filter.hardestFrom) {
+    where.push('jlpt IS NOT NULL AND jlpt <= ?');
+    params.push(filter.hardestFrom);
+  }
+  if (filter.zhLink) {
+    where.push('zh_link_kind = ?');
+    params.push(filter.zhLink);
+  }
+  if (filter.excludeFalseFriends) {
+    where.push("(zh_link_kind IS NULL OR zh_link_kind != 'false-friend')");
+  }
+  if (filter.kanjiCompound) {
+    // No character outside the kanji range (一-鿿, plus the repeat mark 々), and at least two.
+    where.push("length(word) >= 2 AND word NOT GLOB '*[^一-鿿々]*'");
+  }
+  if (filter.tag) {
+    // tags are stored as a JSON array, e.g. ["する verb"]
+    where.push('tags LIKE ?');
+    params.push(`%${JSON.stringify(filter.tag)}%`);
+  }
+  return { sql: where.join(' AND '), params };
+}
+
+/** Catalog words in a collection or topic, easiest JLPT level first. */
+export async function getCollectionWords(db: SQLiteDatabase, filter: CollectionFilter): Promise<Word[]> {
+  const { sql, params } = collectionWhere(filter);
   const rows = await db.getAllAsync<WordRow>(
-    `SELECT * FROM words WHERE is_custom = 0 ${topic ? 'AND topic = ?' : ''}
-      ORDER BY jlpt IS NULL, jlpt DESC, id`,
-    ...(topic ? [topic] : []),
+    `SELECT * FROM words WHERE ${sql} ORDER BY jlpt IS NULL, jlpt DESC, id`,
+    ...params,
   );
   return rows.map(toWord);
+}
+
+/** "4 / 10 saved" for a collection. */
+export async function getCollectionProgress(
+  db: SQLiteDatabase,
+  filter: CollectionFilter,
+): Promise<{ saved: number; total: number }> {
+  const { sql, params } = collectionWhere(filter);
+  const row = await db.getFirstAsync<{ saved: number; total: number }>(
+    `SELECT COUNT(saved_at) AS saved, COUNT(*) AS total FROM words WHERE ${sql}`,
+    ...params,
+  );
+  return { saved: row?.saved ?? 0, total: row?.total ?? 0 };
+}
+
+/**
+ * Suggestions for 発見, built from what's already in your library:
+ * catalog words sharing a kanji with a word you saved, partners of words that
+ * are easy to confuse, and more from the topic you save most. With an empty
+ * library, it suggests easy starter words instead.
+ */
+export async function getSuggestions(db: SQLiteDatabase): Promise<Suggestion[]> {
+  const suggestions: Suggestion[] = [];
+  const unsaved = 'saved_at IS NULL AND is_custom = 0';
+  const recent = await getRecentlyAdded(db, 12);
+
+  if (recent.length === 0) {
+    const rows = await db.getAllAsync<WordRow>(
+      `SELECT * FROM words WHERE ${unsaved} AND jlpt = 5 ORDER BY id LIMIT 8`,
+    );
+    return rows.length > 0 ? [{ kind: 'starter', words: rows.map(toWord) }] : [];
+  }
+
+  // Shared kanji: up to two of your recent words, each with up to 6 unsaved partners.
+  const shown = new Set<number>();
+  for (const anchor of recent) {
+    const kanji = kanjiIn(anchor.word);
+    if (kanji.length === 0) continue;
+    const rows = await db.getAllAsync<WordRow>(
+      `SELECT * FROM words WHERE ${unsaved} AND (${kanji.map(() => 'word LIKE ?').join(' OR ')}) LIMIT 6`,
+      ...kanji.map((k) => `%${k}%`),
+    );
+    const words = rows.map(toWord).filter((w) => !shown.has(w.id));
+    if (words.length === 0) continue;
+    words.forEach((w) => shown.add(w.id));
+    suggestions.push({ kind: 'shared-kanji', anchor, words });
+    if (suggestions.length === 2) break;
+  }
+
+  // Easily confused: a saved word whose confusing partner you haven't saved yet.
+  const pairs = await db.getAllAsync<WordRow & { anchor_id: number }>(
+    `SELECT other.*, saved.id AS anchor_id
+       FROM word_relations r
+       JOIN words saved ON saved.id IN (r.word_id, r.other_id) AND saved.saved_at IS NOT NULL
+       JOIN words other ON other.id IN (r.word_id, r.other_id) AND other.id != saved.id
+                       AND other.saved_at IS NULL
+      WHERE r.kind = 'confusing'
+      LIMIT 6`,
+  );
+  for (const row of pairs) {
+    if (shown.has(row.id)) continue;
+    const anchor = await getWord(db, row.anchor_id);
+    if (!anchor) continue;
+    shown.add(row.id);
+    suggestions.push({ kind: 'confusing', anchor, words: [toWord(row)] });
+  }
+  // Same topic: the topic you've saved the most words from.
+  const top = await db.getFirstAsync<{ topic: Topic }>(
+    `SELECT topic FROM words WHERE saved_at IS NOT NULL AND topic IS NOT NULL
+      GROUP BY topic ORDER BY COUNT(*) DESC LIMIT 1`,
+  );
+  if (top) {
+    const rows = await db.getAllAsync<WordRow>(
+      `SELECT * FROM words WHERE ${unsaved} AND topic = ? ORDER BY jlpt IS NULL, jlpt DESC, id LIMIT 8`,
+      top.topic,
+    );
+    const words = rows.map(toWord).filter((w) => !shown.has(w.id));
+    words.forEach((w) => shown.add(w.id));
+    if (words.length > 0) suggestions.push({ kind: 'same-topic', topic: top.topic, words });
+  }
+
+  return suggestions;
 }
 
 /** Add a catalog word to your library, or take it out (which also unstars it). */

@@ -2,6 +2,9 @@ export type PartOfSpeech = 'noun' | 'verb' | 'i-adj' | 'na-adj' | 'adverb' | 'ex
 
 export type Topic = 'daily-life' | 'travel' | 'relationships' | 'work-tech' | 'anime-games';
 
+/** A topic, or その他 (other): words without a topic, such as most words you add yourself. */
+export type TopicFilter = Topic | 'other';
+
 /** 5 = N5 (easiest) … 1 = N1 (hardest). null = not on the JLPT lists (e.g. anime words). */
 export type JlptLevel = 5 | 4 | 3 | 2 | 1;
 
@@ -92,7 +95,7 @@ export type LibraryFilters = {
   search: string;
   pos: PartOfSpeech | null;
   jlpt: JlptLevel | null;
-  topic: Topic | null;
+  topic: TopicFilter | null;
   status: ReviewFilter;
 };
 
@@ -108,3 +111,24 @@ export type WordInput = {
   starred: boolean;
   example: { ja: string; translation: string } | null;
 };
+
+/** Which catalog words belong to a collection in 発見. All set conditions must match. */
+export type CollectionFilter = {
+  topic?: TopicFilter;
+  jlpt?: JlptLevel;
+  /** Only this level or harder, e.g. 3 = N3, N2 and N1. */
+  hardestFrom?: JlptLevel;
+  zhLink?: ChineseLinkKind;
+  /** Leave out words whose kanji mean something else in Chinese. */
+  excludeFalseFriends?: boolean;
+  /** Only words written entirely in kanji, with at least two (compounds like 観光). */
+  kanjiCompound?: boolean;
+  tag?: string;
+};
+
+/** A row of suggestions in 発見, with the reason it's suggested. */
+export type Suggestion =
+  | { kind: 'shared-kanji'; anchor: Word; words: Word[] }
+  | { kind: 'same-topic'; topic: Topic; words: Word[] }
+  | { kind: 'confusing'; anchor: Word; words: Word[] }
+  | { kind: 'starter'; words: Word[] };
