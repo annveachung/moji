@@ -110,6 +110,8 @@ export type WordInput = {
   notes: string;
   starred: boolean;
   example: { ja: string; translation: string } | null;
+  /** Usually left empty (その他); imports may carry one. */
+  topic?: Topic | null;
 };
 
 /** Which catalog words belong to a collection in 発見. All set conditions must match. */

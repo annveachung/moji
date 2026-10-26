@@ -1,14 +1,26 @@
+import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { AppHeader } from '@/components/app-header';
+import { ImportSheet } from '@/components/import-sheet';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
 import { Chip, EmptyState, Icon, IconButton, Pill, type IconName, type PillTone } from '@/components/ui';
-import { getLibrary, getLibraryStats, setWordStarred } from '@/db/queries';
+import {
+  applyImport,
+  getAllLibraryWords,
+  getLibrary,
+  getLibraryStats,
+  planImport,
+  setWordStarred,
+  type ImportPlan,
+} from '@/db/queries';
 import type {
   JlptLevel,
   LibraryFilters,
@@ -17,6 +29,8 @@ import type {
   PartOfSpeech,
   ReviewFilter,
 } from '@/db/types';
+import { toLocalDay } from '@/lib/date';
+import { csvToWords, wordsToCsv, type CsvProblem } from '@/lib/word-csv';
 import colors from '@/theme/colors';
 
 const STATUSES: ReviewFilter[] = ['all', 'starred'];
@@ -35,6 +49,7 @@ export default function LibraryScreen() {
   const [words, setWords] = useState<LibraryWord[] | null>(null);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [view, setView] = useState<ViewMode>('list');
+  const [importing, setImporting] = useState<{ plan: ImportPlan; problems: CsvProblem[] } | null>(null);
 
   const load = useCallback(() => {
     getLibrary(db, filters).then(setWords);
@@ -52,14 +67,58 @@ export default function LibraryScreen() {
     filters.topic !== null ||
     filters.status !== 'all';
 
+  /** Write the whole library to a CSV file and open the share sheet (Files, AirDrop, Mail…). */
+  const exportCsv = async () => {
+    const all = await getAllLibraryWords(db);
+    if (all.length === 0) {
+      Alert.alert(t('library.exportCsv'), t('library.exportEmpty'));
+      return;
+    }
+    const file = new File(Paths.cache, `moji-${toLocalDay(new Date())}.csv`);
+    if (file.exists) file.delete();
+    file.create();
+    await file.write(wordsToCsv(all));
+    await Sharing.shareAsync(file.uri, {
+      mimeType: 'text/csv',
+      UTI: 'public.comma-separated-values-text',
+      dialogTitle: t('library.exportCsv'),
+    });
+  };
+
+  /** Pick a CSV, read it, and open the review sheet. Nothing is saved until you confirm. */
+  const importCsv = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'public.comma-separated-values-text'],
+      copyToCacheDirectory: true,
+    });
+    if (picked.canceled) return;
+    try {
+      const { words: rows, problems } = csvToWords(await new File(picked.assets[0].uri).text());
+      setImporting({ plan: await planImport(db, rows), problems });
+    } catch {
+      Alert.alert(t('importing.title'), t('importing.error'));
+    }
+  };
+
+  const confirmImport = async (mergeIds: Set<number>) => {
+    if (!importing) return;
+    const result = await applyImport(db, importing.plan, mergeIds);
+    setImporting(null);
+    load();
+    Alert.alert(t('importing.doneTitle'), t('importing.doneBody', result));
+  };
+
+  const headerButtons = (
+    <View className="flex-row gap-2">
+      <IconButton icon="file-download" size={36} label={t('library.importCsv')} onPress={importCsv} />
+      <IconButton icon="ios-share" size={36} label={t('library.exportCsv')} onPress={exportCsv} />
+    </View>
+  );
+
   const toggleStar = async (word: LibraryWord) => {
     await setWordStarred(db, word.id, word.starredAt === null);
     load();
   };
-
-  const addButton = (
-    <IconButton icon="add" tone="primary" size={38} label={t('library.add')} onPress={() => router.push('/word-form')} />
-  );
 
   const header = (
     <View className="gap-3 pb-1 pt-3">
@@ -144,7 +203,15 @@ export default function LibraryScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={t('nav.library')} right={addButton} />
+      <AppHeader subtitle={t('nav.library')} right={headerButtons} />
+      {importing !== null ? (
+        <ImportSheet
+          plan={importing.plan}
+          problems={importing.problems}
+          onCancel={() => setImporting(null)}
+          onConfirm={confirmImport}
+        />
+      ) : null}
       <FlatList
         // Switching between 1 and 2 columns needs a fresh list.
         key={view}

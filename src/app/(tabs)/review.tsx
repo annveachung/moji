@@ -9,7 +9,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { AppHeader } from '@/components/app-header';
 import { FuriganaText } from '@/components/furigana-text';
 import { Card, Icon, IconButton, Pill, StampButton } from '@/components/ui';
-import { getShownSentences, getStarredShuffled, recordReview, setWordStarred } from '@/db/queries';
+import { getRecentlyAdded, getShownSentences, getStarredShuffled, recordReview, setWordStarred } from '@/db/queries';
 import type { Sentence, Word } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { toRomaji } from '@/lib/romaji';
@@ -29,6 +29,7 @@ export default function ReviewScreen() {
   const { settings } = useSettings();
 
   const [queue, setQueue] = useState<Word[] | null>(null);
+  const [recent, setRecent] = useState<Word[]>([]);
   const [position, setPosition] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [example, setExample] = useState<Sentence | null>(null);
@@ -63,7 +64,8 @@ export default function ReviewScreen() {
   useFocusEffect(
     useCallback(() => {
       startRound();
-    }, [startRound]),
+      getRecentlyAdded(db, 10).then(setRecent);
+    }, [startRound, db]),
   );
 
   const answer = async (remembered: boolean) => {
@@ -96,6 +98,7 @@ export default function ReviewScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerClassName="w-full max-w-[720px] flex-grow self-center gap-4 p-4">
+        <RecentlyAdded words={recent} />
         {queue === null ? null : !current ? (
           <RoundEnd
             reviewed={position}
@@ -317,6 +320,33 @@ function ProgressPanel({
           </Svg>
         </View>
       </View>
+    </View>
+  );
+}
+
+/** The words you added most recently, as a sideways row of chips. Tap one to open it. */
+function RecentlyAdded({ words }: { words: Word[] }) {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { settings } = useSettings();
+  if (words.length === 0) return null;
+  return (
+    <View className="gap-2">
+      <Text className="px-1 font-display-semibold text-[13px] text-ink-soft">{t('review.recentTitle')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4" contentContainerClassName="gap-2 px-4 pb-1">
+        {words.map((word) => (
+          <Pressable
+            key={word.id}
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(word.id) } })}
+            className="rounded-2xl bg-card px-3.5 py-2 shadow-sm shadow-ink/10 active:opacity-70">
+            <Text className="text-[17px] font-bold text-ink">{word.word}</Text>
+            <Text numberOfLines={1} className="max-w-[120px] text-[11px] text-ink-soft">
+              {meaningFor(word, settings.meaningLanguage)}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   );
 }
