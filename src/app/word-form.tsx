@@ -2,12 +2,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FuriganaText } from '@/components/furigana-text';
 import { Chip, Icon, Pill } from '@/components/ui';
-import { getWord, insertWord, updateWord } from '@/db/queries';
+import { findDuplicate, getWord, insertWord, setWordSaved, setWordStarred, updateWord } from '@/db/queries';
 import type { JlptLevel, PartOfSpeech, WordInput } from '@/db/types';
 import { makeFurigana } from '@/lib/furigana';
 import { toRomaji } from '@/lib/romaji';
@@ -84,10 +84,45 @@ export default function WordFormScreen() {
       setErrors(problems);
       return;
     }
-    setSaving(true);
-    if (editingId === null) await insertWord(db, input);
-    else await updateWord(db, editingId, input);
-    router.back();
+    if (editingId !== null) {
+      setSaving(true);
+      await updateWord(db, editingId, input);
+      router.back();
+      return;
+    }
+
+    const add = async () => {
+      setSaving(true);
+      await insertWord(db, input);
+      router.back();
+    };
+
+    // Same writing and reading already in moji? Ask before adding a second copy.
+    const duplicate = await findDuplicate(db, input.word, input.reading);
+    const names = { word: input.word, reading: input.reading };
+    if (duplicate?.savedAt) {
+      Alert.alert(t('form.duplicateTitle'), t('form.duplicateBody', names), [
+        { text: t('form.skip'), style: 'cancel', onPress: () => router.back() },
+        { text: t('form.addAnyway'), onPress: add },
+      ]);
+    } else if (duplicate) {
+      // It's one of the Explore words: save that one instead of making a copy.
+      Alert.alert(t('form.catalogTitle'), t('form.catalogBody', names), [
+        {
+          text: t('form.useCatalog'),
+          onPress: async () => {
+            setSaving(true);
+            await setWordSaved(db, duplicate.id, true);
+            if (input.starred) await setWordStarred(db, duplicate.id, true);
+            router.back();
+          },
+        },
+        { text: t('form.addMine'), onPress: add },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
+    } else {
+      await add();
+    }
   };
 
   const preview = form.word.trim() ? makeFurigana(form.word.trim(), form.reading.trim()) : '';

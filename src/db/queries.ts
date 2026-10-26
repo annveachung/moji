@@ -3,6 +3,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { toLocalDay } from '@/lib/date';
 import { kanjiIn, makeFurigana } from '@/lib/furigana';
 
+import type { CsvWord } from '@/lib/word-csv';
+
 import type {
   CollectionFilter,
   LibraryFilters,
@@ -342,20 +344,25 @@ export async function updateWordNotes(db: SQLiteDatabase, id: number, notes: str
 
 /** Save a word you typed in. Returns its new id. */
 export async function insertWord(db: SQLiteDatabase, input: WordInput): Promise<number> {
-  const now = new Date().toISOString();
   let id = 0;
   await db.withTransactionAsync(async () => {
-    const result = await db.runAsync(
-      `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, jlpt, notes,
-                          is_custom, saved_at, starred_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-      input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
-      input.meaningZh, input.pos, input.jlpt, input.notes, now, input.starred ? now : null,
-    );
-    id = result.lastInsertRowId;
-    await saveExample(db, id, input);
+    id = await insertWordRows(db, input);
   });
   return id;
+}
+
+/** The inserts behind insertWord, without a transaction, so imports can batch many in one. */
+async function insertWordRows(db: SQLiteDatabase, input: WordInput): Promise<number> {
+  const now = new Date().toISOString();
+  const result = await db.runAsync(
+    `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, jlpt, topic, notes,
+                        is_custom, saved_at, starred_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
+    input.meaningZh, input.pos, input.jlpt, input.topic ?? null, input.notes, now, input.starred ? now : null,
+  );
+  await saveExample(db, result.lastInsertRowId, input);
+  return result.lastInsertRowId;
 }
 
 export async function updateWord(db: SQLiteDatabase, id: number, input: WordInput) {
@@ -371,6 +378,107 @@ export async function updateWord(db: SQLiteDatabase, id: number, input: WordInpu
     );
     await saveExample(db, id, input);
   });
+}
+
+// ── Duplicates, import and export ────────────────────────────
+
+/**
+ * The word with the same writing and reading, if moji already has it.
+ * Words saved in your library come first, then starter-catalog words.
+ */
+export async function findDuplicate(db: SQLiteDatabase, word: string, reading: string): Promise<Word | null> {
+  const row = await db.getFirstAsync<WordRow>(
+    'SELECT * FROM words WHERE word = ? AND reading = ? ORDER BY saved_at IS NULL LIMIT 1',
+    word.trim(), reading.trim(),
+  );
+  return row ? toWord(row) : null;
+}
+
+/** Every saved word, oldest first, for exporting. */
+export async function getAllLibraryWords(db: SQLiteDatabase): Promise<Word[]> {
+  const rows = await db.getAllAsync<WordRow>('SELECT * FROM words WHERE saved_at IS NOT NULL ORDER BY saved_at');
+  return rows.map(toWord);
+}
+
+export type ImportPlan = {
+  /** Not in your library yet: added (a matching starter word is saved instead of duplicated). */
+  fresh: { csv: CsvWord; catalog: Word | null }[];
+  /** Already in your library: merged only if you tick them. */
+  duplicates: { csv: CsvWord; existing: Word }[];
+  /** Rows repeated within the same file (only the first is used). */
+  repeated: number;
+};
+
+/** Sort spreadsheet rows into new words and duplicates, without changing anything yet. */
+export async function planImport(db: SQLiteDatabase, words: CsvWord[]): Promise<ImportPlan> {
+  const plan: ImportPlan = { fresh: [], duplicates: [], repeated: 0 };
+  const seen = new Set<string>();
+  for (const csv of words) {
+    const key = `${csv.word}\u0000${csv.reading}`;
+    if (seen.has(key)) {
+      plan.repeated++;
+      continue;
+    }
+    seen.add(key);
+    const match = await findDuplicate(db, csv.word, csv.reading);
+    if (match?.savedAt) plan.duplicates.push({ csv, existing: match });
+    else plan.fresh.push({ csv, catalog: match });
+  }
+  return plan;
+}
+
+/** Overwrite a word with a spreadsheet row. Empty cells keep the current value. */
+async function mergeCsvInto(db: SQLiteDatabase, id: number, csv: CsvWord, now: string) {
+  await db.runAsync(
+    `UPDATE words SET
+       meaning_en = COALESCE(NULLIF(?, ''), meaning_en),
+       meaning_zh = COALESCE(NULLIF(?, ''), meaning_zh),
+       pos = ?,
+       jlpt = COALESCE(?, jlpt),
+       topic = COALESCE(?, topic),
+       notes = COALESCE(NULLIF(?, ''), notes),
+       saved_at = COALESCE(saved_at, ?),
+       starred_at = CASE WHEN ? THEN COALESCE(starred_at, ?) ELSE starred_at END
+     WHERE id = ?`,
+    csv.meaningEn, csv.meaningZh, csv.pos, csv.jlpt, csv.topic, csv.notes, now,
+    csv.starred ? 1 : 0, now, id,
+  );
+}
+
+/** Carry out an import: add the new words, and merge the duplicates you ticked. */
+export async function applyImport(
+  db: SQLiteDatabase,
+  plan: ImportPlan,
+  mergeIds: Set<number>,
+): Promise<{ added: number; merged: number; skipped: number }> {
+  const now = new Date().toISOString();
+  let merged = 0;
+  await db.withTransactionAsync(async () => {
+    for (const { csv, catalog } of plan.fresh) {
+      if (catalog) {
+        await mergeCsvInto(db, catalog.id, csv, now);
+        continue;
+      }
+      await insertWordRows(db, {
+        word: csv.word,
+        reading: csv.reading,
+        meaningEn: csv.meaningEn,
+        meaningZh: csv.meaningZh,
+        pos: csv.pos,
+        jlpt: csv.jlpt,
+        topic: csv.topic,
+        notes: csv.notes,
+        starred: csv.starred,
+        example: null,
+      });
+    }
+    for (const { csv, existing } of plan.duplicates) {
+      if (!mergeIds.has(existing.id)) continue;
+      await mergeCsvInto(db, existing.id, csv, now);
+      merged++;
+    }
+  });
+  return { added: plan.fresh.length, merged, skipped: plan.duplicates.length - merged };
 }
 
 /** Your own example sentence: added once, then shown like the built-in ones. */
