@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
-import { Card } from '@/components/ui';
+import { Toggle } from '@/components/ui';
 import type { Language, UiLanguage } from '@/db/types';
 import { useSettings } from '@/state/settings';
-import colors from '@/theme/colors';
 
 const UI_LANGUAGES: { value: UiLanguage; label: string }[] = [
   { value: 'ja', label: '日本語' },
@@ -30,7 +29,8 @@ export default function SettingsScreen() {
         // Leave room for the glass tab bar, which floats over the content
         contentInsetAdjustmentBehavior="automatic"
         contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4 pb-10">
-        <Card>
+        {/* One card, equal-height rows split by thin lines, controls lined up on the right. */}
+        <View className="rounded-card bg-card px-4 shadow-md shadow-ink/10">
           <Row label={t('settings.uiLanguage')}>
             <Segmented
               options={UI_LANGUAGES}
@@ -38,6 +38,7 @@ export default function SettingsScreen() {
               onChange={(uiLanguage) => updateSettings({ uiLanguage })}
             />
           </Row>
+          <Divider />
           <Row label={t('settings.meaningLanguage')}>
             <Segmented
               options={MEANING_LANGUAGES}
@@ -45,16 +46,15 @@ export default function SettingsScreen() {
               onChange={(meaningLanguage) => updateSettings({ meaningLanguage })}
             />
           </Row>
-        </Card>
-
-        <Card>
+          <Divider />
           <Row label={t('settings.showFurigana')}>
-            <ThemedSwitch
+            <Toggle
               value={settings.showFurigana}
+              label={t('settings.showFurigana')}
               onChange={(showFurigana) => updateSettings({ showFurigana })}
             />
           </Row>
-        </Card>
+        </View>
       </ScrollView>
     </View>
   );
@@ -62,11 +62,16 @@ export default function SettingsScreen() {
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <View className="min-h-[44px] flex-row items-center justify-between gap-3">
-      <Text className="flex-1 font-display-semibold text-[15px] text-ink">{label}</Text>
+    <View className="min-h-[60px] flex-row items-center justify-between gap-3 py-2">
+      {/* System font: Plus Jakarta has no Japanese, and mixing fonts shifts the text off-center. */}
+      <Text className="flex-1 text-[15px] font-semibold text-ink">{label}</Text>
       {children}
     </View>
   );
+}
+
+function Divider() {
+  return <View className="h-px bg-surface-high" />;
 }
 
 function Segmented<T extends string>({
@@ -96,18 +101,6 @@ function Segmented<T extends string>({
         );
       })}
     </View>
-  );
-}
-
-function ThemedSwitch({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <Switch
-      value={value}
-      onValueChange={onChange}
-      trackColor={{ true: colors.primary.DEFAULT, false: colors.surface.highest }}
-      thumbColor="#FFFFFF"
-      ios_backgroundColor={colors.surface.highest}
-    />
   );
 }
 

@@ -99,7 +99,7 @@ export type LibraryFilters = {
   status: ReviewFilter;
 };
 
-/** What the add/edit form collects. Romaji and furigana are worked out automatically. */
+/** What the add/edit form collects. Furigana is worked out automatically. */
 export type WordInput = {
   word: string;
   reading: string;
@@ -134,3 +134,26 @@ export type Suggestion =
   | { kind: 'same-topic'; topic: Topic; words: Word[] }
   | { kind: 'confusing'; anchor: Word; words: Word[] }
   | { kind: 'starter'; words: Word[] };
+
+/** A grammar rule in 文法, e.g. 〜ても "even if". */
+export type GrammarRule = {
+  id: number;
+  pattern: string;
+  meaningEn: string;
+  meaningZh: string;
+  jlpt: JlptLevel | null;
+  /** How it attaches (接続), e.g. "Verb て-form + も". */
+  formation: string;
+  explanation: string;
+  /** Number of example sentences saved for it. */
+  sentenceCount: number;
+};
+
+export type GrammarSentence = {
+  id: number;
+  grammarId: number;
+  ja: string;
+  en: string;
+  zh: string;
+  source: 'import' | 'ai';
+};

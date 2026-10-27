@@ -8,10 +8,10 @@ import colors from '@/theme/colors';
 import { Icon, type IconName } from './ui';
 
 const TABS: Record<string, { icon: IconName; label: string }> = {
-  index: { icon: 'home', label: 'nav.home' },
-  library: { icon: 'style', label: 'nav.library' },
+  index: { icon: 'menu-book', label: 'nav.library' },
   review: { icon: 'star', label: 'nav.review' },
-  explore: { icon: 'explore', label: 'nav.explore' },
+  explore: { icon: 'translate', label: 'nav.explore' },
+  grammar: { icon: 'auto-stories', label: 'nav.grammar' },
   settings: { icon: 'tune', label: 'nav.settings' },
 };
 

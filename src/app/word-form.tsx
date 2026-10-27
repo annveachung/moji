@@ -2,15 +2,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FuriganaText } from '@/components/furigana-text';
-import { Chip, Icon, Pill } from '@/components/ui';
+import { Chip, Icon, Pill, Toggle } from '@/components/ui';
 import { findDuplicate, getWord, insertWord, setWordSaved, setWordStarred, updateWord } from '@/db/queries';
 import type { JlptLevel, PartOfSpeech, WordInput } from '@/db/types';
 import { makeFurigana } from '@/lib/furigana';
-import { toRomaji } from '@/lib/romaji';
 import colors from '@/theme/colors';
 
 const POS: PartOfSpeech[] = ['noun', 'verb', 'i-adj', 'na-adj', 'adverb', 'expression'];
@@ -157,9 +156,6 @@ export default function WordFormScreen() {
           {preview ? (
             <>
               <FuriganaText markup={preview} size={40} className="font-bold text-ink" containerClassName="justify-center" />
-              {KANA_ONLY.test(form.reading.trim()) && (
-                <Text className="text-[13px] text-ink-soft">{toRomaji(form.reading.trim())}</Text>
-              )}
             </>
           ) : (
             <Text className="text-[13px] text-ink-muted">{t('form.preview')}</Text>
@@ -231,12 +227,7 @@ export default function WordFormScreen() {
 
         <View className="min-h-[52px] flex-row items-center justify-between rounded-2xl bg-card px-4 shadow-sm shadow-ink/10">
           <Text className="text-[15px] font-semibold text-ink">{t('form.star')}</Text>
-          <Switch
-            value={form.starred}
-            onValueChange={(starred) => update({ starred })}
-            trackColor={{ true: colors.primary.DEFAULT, false: colors.surface.highest }}
-            ios_backgroundColor={colors.surface.highest}
-          />
+          <Toggle value={form.starred} label={t('form.star')} onChange={(starred) => update({ starred })} />
         </View>
 
         <View className="flex-row items-center justify-center gap-1.5">

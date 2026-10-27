@@ -3,37 +3,47 @@ import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { ImportPlan } from '@/db/queries';
-import type { CsvProblem } from '@/lib/word-csv';
-import { useSettings } from '@/state/settings';
 import colors from '@/theme/colors';
 
 import { Card, EmptyState, Icon, SectionHeader } from './ui';
 
+export type ImportReview = {
+  title: string;
+  /** Items that will be added. */
+  fresh: { key: string; title: string; subtitle: string }[];
+  freshTitle: string;
+  /** Items already in moji; ticked ones get updated from the file. */
+  duplicates: { id: number; title: string; subtitle: string; current: string; incoming: string }[];
+  duplicatesTitle: string;
+  duplicatesHint: string;
+  /** Rows that couldn't be read, already described in words. */
+  problems: { line: number; reason: string }[];
+  problemsTitle: string;
+  /** Small notes at the bottom (repeated rows, columns we didn't read, the expected format). */
+  notes: string[];
+};
+
 /**
- * Review an import before it happens: how many new words, which words are already
- * in your library (tick the ones to update from the file), and rows that couldn't be read.
+ * Review an import before it happens: what will be added, which items already exist
+ * (tick the ones to update from the file), and rows that couldn't be read.
+ * Used for both words (単語帳) and grammar (文法).
  */
 export function ImportSheet({
-  plan,
-  problems,
+  review,
   onCancel,
   onConfirm,
 }: {
-  plan: ImportPlan;
-  problems: CsvProblem[];
+  review: ImportReview;
   onCancel: () => void;
   onConfirm: (mergeIds: Set<number>) => void;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { settings } = useSettings();
-  const zh = settings.meaningLanguage === 'zh-TW';
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const allIds = plan.duplicates.map((d) => d.existing.id);
+  const allIds = review.duplicates.map((d) => d.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
-  const canImport = plan.fresh.length > 0 || selected.size > 0;
+  const canImport = review.fresh.length > 0 || selected.size > 0;
 
   const toggle = (id: number) =>
     setSelected((current) => {
@@ -51,7 +61,7 @@ export function ImportSheet({
           <Pressable accessibilityRole="button" hitSlop={10} onPress={onCancel}>
             <Text className="text-[16px] text-ink-soft">{t('common.cancel')}</Text>
           </Pressable>
-          <Text className="font-display text-[16px] text-ink">{t('importing.title')}</Text>
+          <Text className="font-display text-[16px] text-ink">{review.title}</Text>
           <Pressable
             accessibilityRole="button"
             hitSlop={10}
@@ -65,30 +75,28 @@ export function ImportSheet({
         <ScrollView
           contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4"
           contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
-          {!canImport && plan.duplicates.length === 0 ? (
+          {review.fresh.length === 0 && review.duplicates.length === 0 ? (
             <EmptyState icon="inbox" message={t('importing.nothing')} />
           ) : null}
 
-          {/* New words */}
-          {plan.fresh.length > 0 ? (
+          {review.fresh.length > 0 ? (
             <Card>
-              <SectionHeader title={t('importing.newWords', { count: plan.fresh.length })} accent="matcha" />
+              <SectionHeader title={review.freshTitle} accent="matcha" />
               <View className="flex-row flex-wrap gap-2">
-                {plan.fresh.map(({ csv }) => (
-                  <View key={csv.line} className="rounded-xl bg-surface-low px-3 py-1.5">
-                    <Text className="text-[15px] font-bold text-ink">{csv.word}</Text>
-                    <Text className="text-[11px] text-ink-soft">{csv.reading}</Text>
+                {review.fresh.map((item) => (
+                  <View key={item.key} className="rounded-xl bg-surface-low px-3 py-1.5">
+                    <Text className="text-[15px] font-bold text-ink">{item.title}</Text>
+                    {item.subtitle ? <Text className="text-[11px] text-ink-soft">{item.subtitle}</Text> : null}
                   </View>
                 ))}
               </View>
             </Card>
           ) : null}
 
-          {/* Duplicates, with a checkbox each */}
-          {plan.duplicates.length > 0 ? (
+          {review.duplicates.length > 0 ? (
             <Card>
               <SectionHeader
-                title={t('importing.duplicates', { count: plan.duplicates.length })}
+                title={review.duplicatesTitle}
                 accent="mustard"
                 right={
                   <Pressable
@@ -106,17 +114,15 @@ export function ImportSheet({
                   </Pressable>
                 }
               />
-              <Text className="text-[12px] leading-4 text-ink-soft">{t('importing.duplicatesHint')}</Text>
-              {plan.duplicates.map(({ csv, existing }) => {
-                const checked = selected.has(existing.id);
-                const now = zh ? existing.meaningZh || existing.meaningEn : existing.meaningEn || existing.meaningZh;
-                const file = zh ? csv.meaningZh || csv.meaningEn : csv.meaningEn || csv.meaningZh;
+              <Text className="text-[12px] leading-4 text-ink-soft">{review.duplicatesHint}</Text>
+              {review.duplicates.map((item) => {
+                const checked = selected.has(item.id);
                 return (
                   <Pressable
-                    key={existing.id}
+                    key={item.id}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked }}
-                    onPress={() => toggle(existing.id)}
+                    onPress={() => toggle(item.id)}
                     className={`flex-row items-start gap-3 rounded-2xl p-3 ${checked ? 'bg-primary-soft/60' : 'bg-surface-low'}`}>
                     <Icon
                       name={checked ? 'check-box' : 'check-box-outline-blank'}
@@ -125,16 +131,17 @@ export function ImportSheet({
                     />
                     <View className="flex-1 gap-1">
                       <Text className="text-[16px] font-bold text-ink">
-                        {existing.word} <Text className="text-[12px] font-normal text-ink-soft">{existing.reading}</Text>
+                        {item.title}{' '}
+                        {item.subtitle ? <Text className="text-[12px] font-normal text-ink-soft">{item.subtitle}</Text> : null}
                       </Text>
                       <Text className="text-[12px] text-ink-soft">
                         <Text className="font-display-semibold">{t('importing.current')}: </Text>
-                        {now}
+                        {item.current}
                       </Text>
-                      {file && file !== now ? (
+                      {item.incoming && item.incoming !== item.current ? (
                         <Text className="text-[12px] text-ink">
                           <Text className="font-display-semibold text-primary">{t('importing.file')}: </Text>
-                          {file}
+                          {item.incoming}
                         </Text>
                       ) : null}
                     </View>
@@ -144,22 +151,22 @@ export function ImportSheet({
             </Card>
           ) : null}
 
-          {/* Rows that couldn't be read */}
-          {problems.length > 0 ? (
+          {review.problems.length > 0 ? (
             <Card>
-              <SectionHeader title={t('importing.problems', { count: problems.length })} accent="error" />
-              {problems.slice(0, 20).map((p) => (
+              <SectionHeader title={review.problemsTitle} accent="error" />
+              {review.problems.slice(0, 20).map((p) => (
                 <Text key={p.line} className="text-[13px] text-ink-soft">
-                  {t('importing.line', { line: p.line })}: {t(`importing.reason.${p.reason}`)}
+                  {t('importing.line', { line: p.line })}: {p.reason}
                 </Text>
               ))}
-              <Text className="text-[11px] leading-4 text-ink-muted">{t('importing.formatHint')}</Text>
             </Card>
           ) : null}
 
-          {plan.repeated > 0 ? (
-            <Text className="px-1 text-[12px] text-ink-muted">{t('importing.repeated', { count: plan.repeated })}</Text>
-          ) : null}
+          {review.notes.map((note) => (
+            <Text key={note} className="px-1 text-[12px] leading-4 text-ink-muted">
+              {note}
+            </Text>
+          ))}
         </ScrollView>
       </View>
     </Modal>

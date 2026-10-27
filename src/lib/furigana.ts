@@ -1,4 +1,4 @@
-import { toHiragana } from './romaji';
+import { toHiragana } from './kana';
 
 /**
  * Furigana markup (Anki style):
