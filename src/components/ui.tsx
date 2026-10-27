@@ -1,6 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Children, type ComponentProps, type ReactNode } from 'react';
+import { Children, useEffect, type ComponentProps, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import colors from '@/theme/colors';
 
@@ -210,5 +211,66 @@ export function TwoColumnGrid({ children, gap = 12 }: { children: ReactNode; gap
         </View>
       ))}
     </View>
+  );
+}
+
+const TRACK = { width: 52, height: 32 };
+const KNOB = 28;
+const TRAVEL = TRACK.width - KNOB - 4;
+
+/**
+ * An on/off switch drawn by the app. React Native's built-in iOS Switch reports a
+ * different size than it draws on iOS 26, so it sits off-center in a row; this one
+ * has an exact size, so it lines up, and it uses the app's colors.
+ */
+export function Toggle({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+  /** Read aloud by VoiceOver. */
+  label?: string;
+}) {
+  const progress = useSharedValue(value ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(value ? 1 : 0, { duration: 180 });
+  }, [value, progress]);
+
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [colors.surface.highest, colors.primary.DEFAULT]),
+  }));
+  const knobStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: progress.value * TRAVEL }],
+  }));
+
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+      hitSlop={8}
+      onPress={() => onChange(!value)}>
+      <Animated.View
+        style={[{ width: TRACK.width, height: TRACK.height, borderRadius: TRACK.height / 2, padding: 2, justifyContent: 'center' }, trackStyle]}>
+        <Animated.View
+          style={[
+            {
+              width: KNOB,
+              height: KNOB,
+              borderRadius: KNOB / 2,
+              backgroundColor: '#FFFFFF',
+              shadowColor: '#000000',
+              shadowOpacity: 0.15,
+              shadowRadius: 2,
+              shadowOffset: { width: 0, height: 1 },
+            },
+            knobStyle,
+          ]}
+        />
+      </Animated.View>
+    </Pressable>
   );
 }

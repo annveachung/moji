@@ -11,7 +11,6 @@ export type Settings = {
   /** Which meaning to show for words and sentences (only one at a time, to save space). */
   meaningLanguage: Language;
   showFurigana: boolean;
-  showRomaji: boolean;
 };
 
 function defaultSettings(): Settings {
@@ -19,7 +18,6 @@ function defaultSettings(): Settings {
     uiLanguage: 'ja',
     meaningLanguage: deviceLanguage(),
     showFurigana: true,
-    showRomaji: false,
   };
 }
 

@@ -23,7 +23,6 @@ import {
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
 import { furiganaToReading } from '@/lib/furigana';
 import { meaningFor, translationFor } from '@/lib/meaning';
-import { toRomaji } from '@/lib/romaji';
 import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
 import colors from '@/theme/colors';
@@ -157,11 +156,6 @@ export default function WordDetailScreen() {
                 on={settings.showFurigana}
                 onPress={() => updateSettings({ showFurigana: !settings.showFurigana })}
               />
-              <TogglePill
-                label={t('word.romaji')}
-                on={settings.showRomaji}
-                onPress={() => updateSettings({ showRomaji: !settings.showRomaji })}
-              />
               <IconButton
                 icon={word.starredAt ? 'star' : 'star-border'}
                 tone={word.starredAt ? 'star' : 'quiet'}
@@ -180,11 +174,6 @@ export default function WordDetailScreen() {
               className="font-bold text-ink"
               containerClassName="justify-center"
             />
-            {settings.showRomaji && (
-              <Text className="font-display-medium text-[15px] tracking-widest text-ink-soft">
-                {toRomaji(word.reading)}
-              </Text>
-            )}
             <Pill label={t(`pos.${word.pos}`)} tone="outline" />
           </View>
 

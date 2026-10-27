@@ -5,7 +5,6 @@ import { Pressable, Text, View } from 'react-native';
 import type { LibraryFilters, LibraryWord } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { relativeDay } from '@/lib/relative-time';
-import { toRomaji } from '@/lib/romaji';
 import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
 import colors from '@/theme/colors';
@@ -109,11 +108,6 @@ export function LibraryCard({
             <Text className="text-[12px] font-semibold tracking-widest text-primary">{word.reading}</Text>
           )}
           <Text className="text-[28px] font-bold leading-9 text-ink">{word.word}</Text>
-          {settings.showRomaji && (
-            <Text className="font-display-medium text-[12px] tracking-wide text-ink-soft">
-              {toRomaji(word.reading)}
-            </Text>
-          )}
         </View>
         <IconButton icon="volume-up" tone="quiet" label={t('word.listen')} onPress={() => speakJapanese(word.reading)} />
       </View>

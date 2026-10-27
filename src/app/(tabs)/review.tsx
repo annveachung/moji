@@ -12,7 +12,6 @@ import { Card, Icon, IconButton, Pill, StampButton } from '@/components/ui';
 import { getRecentlyAdded, getShownSentences, getStarredShuffled, recordReview, setWordStarred } from '@/db/queries';
 import type { Sentence, Word } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
-import { toRomaji } from '@/lib/romaji';
 import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
 import colors from '@/theme/colors';
@@ -103,7 +102,7 @@ export default function ReviewScreen() {
           <RoundEnd
             reviewed={position}
             onAgain={startRound}
-            onLibrary={() => router.navigate('/library')}
+            onLibrary={() => router.navigate('/')}
           />
         ) : (
           <>
@@ -162,11 +161,6 @@ export default function ReviewScreen() {
               ) : (
                 <Animated.View entering={FadeIn.duration(250)} style={{ alignSelf: 'stretch' }}>
                   <View className="items-center gap-3">
-                    {settings.showRomaji && (
-                      <Text className="text-[14px] font-semibold text-ink-soft">
-                        [ {toRomaji(current.reading)} ]
-                      </Text>
-                    )}
                     <View className="flex-row items-center gap-2">
                       <Pill label={t(`pos.${current.pos}`)} tone="outline" />
                       <IconButton

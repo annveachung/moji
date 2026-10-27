@@ -8,7 +8,7 @@ export const DATABASE_NAME = 'moji.db';
  * Bump this and add a `if (version < N)` block below whenever the schema changes.
  * SQLite remembers the version in `PRAGMA user_version`, so each migration runs once.
  */
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -105,6 +105,35 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         DROP TABLE cards;
         CREATE INDEX idx_words_saved ON words(saved_at);
         CREATE INDEX idx_review_logs_word ON review_logs(word_id);
+      `);
+    }
+    if (version < 3) {
+      // 文法: grammar rules (imported from a spreadsheet) and sentences saved for each.
+      await tx.execAsync(`
+        CREATE TABLE grammar (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          pattern TEXT NOT NULL,
+          meaning_en TEXT NOT NULL DEFAULT '',
+          meaning_zh TEXT NOT NULL DEFAULT '',
+          jlpt INTEGER,
+          formation TEXT NOT NULL DEFAULT '',
+          explanation TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        );
+
+        CREATE TABLE grammar_sentences (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          grammar_id INTEGER NOT NULL REFERENCES grammar(id) ON DELETE CASCADE,
+          ja TEXT NOT NULL,
+          en TEXT NOT NULL DEFAULT '',
+          zh TEXT NOT NULL DEFAULT '',
+          -- 'import' = from your spreadsheet, 'ai' = generated and saved by you
+          source TEXT NOT NULL DEFAULT 'import',
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        );
+
+        CREATE INDEX idx_grammar_jlpt ON grammar(jlpt);
+        CREATE INDEX idx_grammar_sentences_rule ON grammar_sentences(grammar_id);
       `);
     }
     await tx.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
