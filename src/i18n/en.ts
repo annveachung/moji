@@ -265,6 +265,20 @@ const en = {
     formatHint: 'Columns: pattern, jlpt, meaning_en, meaning_zh, formation, explanation, example, translation (Japanese headers like 文法, レベル, 意味, 例文 also work).',
     doneBody: 'Added {{added}}, updated {{merged}}, skipped {{skipped}}.',
   },
+  auth: {
+    tagline: 'Every word you meet, in your own notebook.',
+    signInHint: 'Sign in with your Google account to get started.',
+    signingIn: 'Signing in…',
+    errors: {
+      network: "Couldn't reach the moji server. Check your internet connection and try again.",
+      failed: "Couldn't sign you in. Please try again.",
+      notConfigured: "Google sign-in isn't set up yet in this build.",
+    },
+    account: 'Account',
+    signOut: 'Sign out',
+    signOutConfirm: 'Sign out?',
+    signOutBody: 'Your words stay on this phone.',
+  },
   settings: {
     title: 'Settings',
     uiLanguage: 'App language',
