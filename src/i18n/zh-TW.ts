@@ -268,6 +268,20 @@ const zhTW: typeof en = {
     formatHint: '欄位：pattern, jlpt, meaning_en, meaning_zh, formation, explanation, example, translation（也可以用 文法、レベル、意味、例文 等日文標題）',
     doneBody: '新增 {{added}} 個、更新 {{merged}} 個、略過 {{skipped}} 個。',
   },
+  auth: {
+    tagline: '把遇到的每個日文單字，收進自己的單字本。',
+    signInHint: '使用 Google 帳號登入，開始使用吧。',
+    signingIn: '登入中…',
+    errors: {
+      network: '無法連線到 moji 伺服器，請檢查網路連線後再試一次。',
+      failed: '無法登入，請再試一次。',
+      notConfigured: '這個版本還沒有設定 Google 登入。',
+    },
+    account: '帳號',
+    signOut: '登出',
+    signOutConfirm: '要登出嗎？',
+    signOutBody: '這支手機上的單字會保留。',
+  },
   settings: {
     title: '設定',
     uiLanguage: '介面語言',

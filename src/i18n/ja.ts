@@ -269,6 +269,20 @@ const ja: typeof en = {
     formatHint: '列：pattern, jlpt, meaning_en, meaning_zh, formation, explanation, example, translation（文法・レベル・意味・例文などの日本語の見出しもOK）',
     doneBody: '{{added}}件を追加、{{merged}}件を更新、{{skipped}}件をスキップしました。',
   },
+  auth: {
+    tagline: '出会った言葉を、自分だけの単語帳に。',
+    signInHint: 'Googleアカウントでログインして、はじめよう。',
+    signingIn: 'ログイン中…',
+    errors: {
+      network: 'サーバーにつながりませんでした。インターネット接続を確認して、もう一度お試しください。',
+      failed: 'ログインできませんでした。もう一度お試しください。',
+      notConfigured: 'このビルドでは、Googleログインがまだ設定されていません。',
+    },
+    account: 'アカウント',
+    signOut: 'ログアウト',
+    signOutConfirm: 'ログアウトしますか？',
+    signOutBody: 'この端末の単語はそのまま残ります。',
+  },
   settings: {
     title: '設定',
     uiLanguage: '表示言語',
