@@ -11,6 +11,7 @@ import { WordRow } from '@/components/word-row';
 import { getCollectionWords, setWordSaved } from '@/db/queries';
 import type { Word } from '@/db/types';
 import { findCollection } from '@/lib/collections';
+import { useLayout } from '@/lib/layout';
 import colors from '@/theme/colors';
 
 /** All catalog words in one collection or topic, easiest first, with one-tap save. */
@@ -20,6 +21,7 @@ export default function CollectionScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const layout = useLayout();
   const [words, setWords] = useState<Word[] | null>(null);
 
   const load = useCallback(() => {
@@ -38,7 +40,7 @@ export default function CollectionScreen() {
   if (!collection) {
     return (
       <View className="flex-1 bg-surface">
-        <AppHeader subtitle={t('nav.explore')} back />
+        <AppHeader subtitle={t('nav.explore')} back kind="reading" />
         <View className="p-4">
           <EmptyState icon="search-off" message={t('explore.empty')} />
         </View>
@@ -52,12 +54,12 @@ export default function CollectionScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={title} back />
+      <AppHeader subtitle={title} back kind="reading" />
       <FlatList
         data={words ?? []}
         keyExtractor={(word) => String(word.id)}
-        contentContainerClassName="w-full max-w-[720px] self-center gap-2 px-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerClassName="gap-2"
+        contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 24 }}
         ListHeaderComponent={
           <View className="mb-2 gap-2 pt-3">
             <View className="flex-row items-center gap-3">

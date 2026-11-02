@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import colors from '@/theme/colors';
+import { useLayout } from '@/lib/layout';
 
 import { Card, EmptyState, Icon, SectionHeader } from './ui';
 
@@ -38,6 +39,7 @@ export function ImportSheet({
   onConfirm: (mergeIds: Set<number>) => void;
 }) {
   const { t } = useTranslation();
+  const layout = useLayout();
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -73,8 +75,8 @@ export function ImportSheet({
         </View>
 
         <ScrollView
-          contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4"
-          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
+          contentContainerClassName="gap-4 py-4"
+          contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 32 }}>
           {review.fresh.length === 0 && review.duplicates.length === 0 ? (
             <EmptyState icon="inbox" message={t('importing.nothing')} />
           ) : null}

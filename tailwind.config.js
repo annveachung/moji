@@ -2,6 +2,9 @@
 module.exports = {
   content: ['./src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // moji is light-only. 'class' = dark mode only if switched on by hand (never), which also avoids
+  // a NativeWind error on the web dev server ("Cannot manually set color scheme").
+  darkMode: 'class',
   theme: {
     extend: {
       colors: require('./src/theme/colors'),

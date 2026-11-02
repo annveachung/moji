@@ -271,8 +271,8 @@ const ja: typeof en = {
     doneBody: '{{added}}件を追加、{{merged}}件を更新、{{skipped}}件をスキップしました。',
   },
   ai: {
-    quickAddPlaceholder: 'ことばを入力（🎤音声入力もOK）',
-    quickAddHint: '読み方・意味・例文・トピックはAIが入れます。',
+    quickAddPlaceholder: 'ことばを入力…',
+    quickAddHint: '🎤音声入力もOK。読み方・意味・例文・トピックはAIが入れます。',
     adding: 'AIが調べています…',
     added: '単語帳に追加しました',
     open: '詳しく',

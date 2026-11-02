@@ -17,6 +17,7 @@ import {
 import type { GrammarRule, JlptLevel } from '@/db/types';
 import { showAlert } from '@/lib/alert';
 import { pickCsvText } from '@/lib/file-io';
+import { padRows, useLayout } from '@/lib/layout';
 import { csvToGrammar, type GrammarCsvProblem } from '@/lib/grammar-csv';
 import { meaningFor } from '@/lib/meaning';
 import { useSettings } from '@/state/settings';
@@ -41,6 +42,7 @@ export default function GrammarScreen() {
   const [importing, setImporting] = useState<Importing | null>(null);
 
   const { dataVersion } = useSync();
+  const layout = useLayout();
 
   const load = useCallback(() => {
     getGrammarRules(db, { search, jlpt: level }).then(setRules);
@@ -139,12 +141,16 @@ export default function GrammarScreen() {
         <ImportSheet review={toReview(importing)} onCancel={() => setImporting(null)} onConfirm={confirmImport} />
       ) : null}
       <FlatList
-        data={rules ?? []}
-        keyExtractor={(rule) => String(rule.id)}
+        key={layout.columns}
+        numColumns={layout.columns}
+        columnWrapperClassName={layout.columns > 1 ? 'gap-3' : undefined}
+        data={padRows(rules ?? [], layout.columns)}
+        keyExtractor={(rule, index) => (rule ? String(rule.id) : `empty-${index}`)}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerClassName="w-full max-w-[720px] self-center gap-3 px-4 pb-32"
+        contentContainerStyle={layout.page('list')}
+        contentContainerClassName="gap-3 pb-32"
         ListHeaderComponent={header}
         ListEmptyComponent={
           rules !== null ? (
@@ -154,7 +160,9 @@ export default function GrammarScreen() {
             />
           ) : undefined
         }
-        renderItem={({ item }) => <GrammarCard rule={item} />}
+        renderItem={({ item }) => (
+          <View style={layout.columns > 1 ? { flex: 1 } : undefined}>{item ? <GrammarCard rule={item} /> : null}</View>
+        )}
       />
     </View>
   );

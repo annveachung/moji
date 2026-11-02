@@ -30,6 +30,7 @@ import type {
 import { showAlert } from '@/lib/alert';
 import { toLocalDay } from '@/lib/date';
 import { pickCsvText, shareCsv } from '@/lib/file-io';
+import { padRows, useLayout } from '@/lib/layout';
 import { meaningFor } from '@/lib/meaning';
 import { useSortOther } from '@/lib/use-sort-other';
 import { csvToWords, wordsToCsv, type CsvProblem } from '@/lib/word-csv';
@@ -57,6 +58,9 @@ export default function LibraryScreen() {
   const [importing, setImporting] = useState<{ plan: ImportPlan; problems: CsvProblem[] } | null>(null);
   const { dataVersion, topicLabel } = useSync();
   const { sorting, sort } = useSortOther(() => load());
+  const layout = useLayout();
+  // Cards per row: list view 1 → 3 as the window widens; the compact grid view one more.
+  const columns = view === 'grid' ? layout.columns + 1 : layout.columns;
 
   const load = useCallback(() => {
     getLibrary(db, filters).then(setWords);
@@ -141,17 +145,23 @@ export default function LibraryScreen() {
 
   const header = (
     <View className="gap-3 pb-1 pt-3">
-      {/* Quick add: type or dictate just the word; the AI fills in the rest. */}
-      <QuickAdd onAdded={load} />
-
-      {stats !== null && stats.total > 0 ? (
-        <StatsCard
-          stats={stats}
-          status={filters.status}
-          onStatus={(status) => update({ status: filters.status === status ? 'all' : status })}
-          onReview={() => router.navigate('/review')}
-        />
-      ) : null}
+      {/* Quick add (type or dictate just the word; the AI fills in the rest) and your stats:
+          stacked on phones, side by side on wider screens. */}
+      <View className={layout.isCompact ? 'gap-3' : 'flex-row items-start gap-3'}>
+        <View className={layout.isCompact ? '' : 'flex-[3]'}>
+          <QuickAdd onAdded={load} />
+        </View>
+        {stats !== null && stats.total > 0 ? (
+          <View className={layout.isCompact ? '' : 'flex-[2]'}>
+            <StatsCard
+              stats={stats}
+              status={filters.status}
+              onStatus={(status) => update({ status: filters.status === status ? 'all' : status })}
+              onReview={() => router.navigate('/review')}
+            />
+          </View>
+        ) : null}
+      </View>
 
       <View className="flex-row items-center gap-2 rounded-2xl bg-card px-3.5 shadow-sm shadow-ink/10">
         <Icon name="search" size={20} color={colors.ink.muted} />
@@ -247,16 +257,17 @@ export default function LibraryScreen() {
         />
       ) : null}
       <FlatList
-        // Switching between 1 and 2 columns needs a fresh list.
-        key={view}
-        numColumns={view === 'grid' ? 2 : 1}
-        columnWrapperClassName={view === 'grid' ? 'gap-3' : undefined}
-        data={words ?? []}
-        keyExtractor={(word) => String(word.id)}
+        // Changing the number of columns needs a fresh list.
+        key={`${view}-${columns}`}
+        numColumns={columns}
+        columnWrapperClassName={columns > 1 ? 'gap-3' : undefined}
+        data={padRows(words ?? [], columns)}
+        keyExtractor={(word, index) => (word ? String(word.id) : `empty-${index}`)}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerClassName="w-full max-w-[720px] self-center gap-3 px-4 pb-8"
+        contentContainerStyle={layout.page('list')}
+        contentContainerClassName="gap-3 pb-8"
         ListHeaderComponent={header}
         ListEmptyComponent={
           words !== null ? (
@@ -266,13 +277,15 @@ export default function LibraryScreen() {
             />
           ) : undefined
         }
-        renderItem={({ item }) =>
-          view === 'grid' ? (
-            <LibraryTile word={item} onToggleStar={() => toggleStar(item)} />
-          ) : (
-            <LibraryCard word={item} onToggleStar={() => toggleStar(item)} filters={filters} onFilter={update} />
-          )
-        }
+        renderItem={({ item }) => (
+          <View style={columns > 1 ? { flex: 1 } : undefined}>
+            {item === null ? null : view === 'grid' ? (
+              <LibraryTile word={item} onToggleStar={() => toggleStar(item)} />
+            ) : (
+              <LibraryCard word={item} onToggleStar={() => toggleStar(item)} filters={filters} onFilter={update} />
+            )}
+          </View>
+        )}
         ListFooterComponent={
           words !== null && words.length > 0 && !filtering ? (
             <View className="items-center gap-1 py-6">

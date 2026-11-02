@@ -270,8 +270,8 @@ const zhTW: typeof en = {
     doneBody: '新增 {{added}} 個、更新 {{merged}} 個、略過 {{skipped}} 個。',
   },
   ai: {
-    quickAddPlaceholder: '輸入單字（也可用🎤語音輸入）',
-    quickAddHint: '讀音、意思、例句和主題都由 AI 填好。',
+    quickAddPlaceholder: '輸入單字…',
+    quickAddHint: '可打字或用🎤語音輸入。讀音、意思、例句和主題都由 AI 填好。',
     adding: 'AI 查詢中…',
     added: '已加入單字本',
     open: '詳細',

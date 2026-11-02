@@ -25,6 +25,7 @@ import { showAlert } from '@/lib/alert';
 import { furiganaToReading } from '@/lib/furigana';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
+import { useLayout } from '@/lib/layout';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -50,6 +51,7 @@ export default function WordDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const layout = useLayout();
   const { settings, updateSettings } = useSettings();
   const zh = settings.meaningLanguage === 'zh-TW';
 
@@ -88,7 +90,7 @@ export default function WordDetailScreen() {
   if (word === null) {
     return (
       <View className="flex-1 bg-surface">
-        <AppHeader subtitle={t('word.title')} back />
+        <AppHeader subtitle={t('word.title')} back kind="reading" />
         <View className="p-4">
           <EmptyState icon="search-off" message={t('word.notFound')} />
         </View>
@@ -141,10 +143,10 @@ export default function WordDetailScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={t('word.title')} back />
+      <AppHeader subtitle={t('word.title')} back kind="reading" />
       <ScrollView
-        contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerClassName="gap-4 py-4"
+        contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled">
         {/* 1. The word itself */}
         <View className="rounded-[28px] bg-card p-5 shadow-md shadow-ink/10">

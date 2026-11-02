@@ -11,6 +11,7 @@ import type { Suggestion, Word } from '@/db/types';
 import { KANJI_ADVANTAGE, LEVELS } from '@/lib/collections';
 import { meaningFor } from '@/lib/meaning';
 import { useSettings } from '@/state/settings';
+import { useLayout } from '@/lib/layout';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
@@ -25,6 +26,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { dataVersion, topicLabel } = useSync();
+  const layout = useLayout();
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [kanjiWords, setKanjiWords] = useState<Word[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress>>({});
@@ -71,7 +73,8 @@ export default function ExploreScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         // Extra room at the bottom so the last cards clear the floating tab bar.
-        contentContainerClassName="w-full max-w-[720px] self-center gap-4 px-4 pb-32 pt-3">
+        contentContainerStyle={layout.page('list')}
+        contentContainerClassName="gap-4 pb-32 pt-3">
         <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.intro')}</Text>
 
         {/* 1. For you */}
@@ -107,7 +110,8 @@ export default function ExploreScreen() {
         <View className="mt-2">
           <SectionHeader title={t('explore.levels')} accent="matcha" />
         </View>
-        <TwoColumnGrid>
+        {/* N5 → N1 side by side on wide screens */}
+        <TwoColumnGrid columns={layout.size === 'wide' ? 5 : layout.size === 'medium' ? 3 : 2}>
           {LEVELS.map(({ level, collection }) => (
             <LevelCard
               key={level}
@@ -124,21 +128,34 @@ export default function ExploreScreen() {
   );
 }
 
-/** A titled, sideways-scrolling row of small word cards. */
+/**
+ * A titled row of small word cards: it scrolls sideways on phones, and wraps into a grid
+ * on wider screens (sideways scrolling is awkward with a mouse).
+ */
 function WordStrip({ title, words, onSave }: { title?: string; words: Word[]; onSave: (word: Word) => void }) {
+  const { gutter, isCompact } = useLayout();
   return (
     <View className="gap-2">
       {title ? <Text className="px-1 font-display-semibold text-[13px] text-ink-soft">{title}</Text> : null}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        // Let cards run edge to edge while lining up with the page's padding.
-        className="-mx-4"
-        contentContainerClassName="gap-3 px-4 pb-2">
-        {words.map((word) => (
-          <WordCard key={word.id} word={word} onSave={() => onSave(word)} />
-        ))}
-      </ScrollView>
+      {!isCompact ? (
+        <View className="flex-row flex-wrap gap-3 pb-2">
+          {words.map((word) => (
+            <WordCard key={word.id} word={word} onSave={() => onSave(word)} />
+          ))}
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          // Let cards run edge to edge while lining up with the page's padding.
+          style={{ marginHorizontal: -gutter }}
+          contentContainerStyle={{ paddingHorizontal: gutter }}
+          contentContainerClassName="gap-3 pb-2">
+          {words.map((word) => (
+            <WordCard key={word.id} word={word} onSave={() => onSave(word)} />
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
