@@ -95,14 +95,6 @@ export type LibraryWord = Word & {
   status: ReviewStatus;
 };
 
-export type LibraryStats = {
-  total: number;
-  starred: number;
-  known: number;
-  /** Share of all reviews answered 覚えた; null if nothing reviewed yet. */
-  accuracy: number | null;
-};
-
 /** Review status filter in the library. */
 export type ReviewFilter = 'all' | 'starred';
 

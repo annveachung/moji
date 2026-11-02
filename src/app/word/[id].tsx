@@ -2,7 +2,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -18,7 +18,6 @@ import {
   setSentenceFavorite,
   setWordSaved,
   setWordStarred,
-  updateWordNotes,
 } from '@/db/queries';
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
 import { showAlert } from '@/lib/alert';
@@ -60,7 +59,6 @@ export default function WordDetailScreen() {
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [unseen, setUnseen] = useState(0);
   const [related, setRelated] = useState<RelatedWord[]>([]);
-  const [notes, setNotes] = useState('');
   const [speed, setSpeed] = useState(1);
   const { dataVersion, topicLabel } = useSync();
 
@@ -68,7 +66,6 @@ export default function WordDetailScreen() {
     const loaded = await getWord(db, wordId);
     setWord(loaded);
     if (!loaded) return;
-    setNotes(loaded.notes);
     setRelated(await getRelatedWords(db, loaded));
     let shown = await getShownSentences(db, wordId);
     // First visit: reveal the first example so the section is never empty.
@@ -347,32 +344,6 @@ export default function WordDetailScreen() {
               ))}
             </TwoColumnGrid>
           )}
-        </Card>
-
-        {/* 6. Tags and personal notes */}
-        <Card>
-          <SectionHeader title={t('word.notesTitle')} />
-          {word.tags.length > 0 && (
-            <View className="flex-row flex-wrap gap-1.5">
-              {word.tags.map((tag) => (
-                <Pill key={tag} label={`#${tag}`} tone="outline" />
-              ))}
-            </View>
-          )}
-          {/* A sticky note, with a strip of washi tape on top. */}
-          <View className="mt-2 flex-row items-start gap-2 rounded-xl bg-mustard-soft/60 p-3 pt-4">
-            <View className="absolute -top-1.5 left-8 h-3 w-16 -rotate-2 rounded-sm bg-surface-highest" />
-            <Icon name="sticky-note-2" size={18} color={colors.primary.DEFAULT} />
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              onEndEditing={() => updateWordNotes(db, word.id, notes)}
-              placeholder={t('word.notesPlaceholder')}
-              placeholderTextColor={colors.ink.muted}
-              multiline
-              className="min-h-[60px] flex-1 text-[14px] leading-5 text-ink"
-            />
-          </View>
         </Card>
 
         {/* Library actions */}

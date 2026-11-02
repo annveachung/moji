@@ -1,6 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { toLocalDay } from '@/lib/date';
 import { kanjiIn, makeFurigana } from '@/lib/furigana';
 import { guessVerbGroup } from '@/lib/verb';
 
@@ -12,7 +11,6 @@ import type {
   CollectionFilter,
   CustomTopic,
   LibraryFilters,
-  LibraryStats,
   LibraryWord,
   RelatedWord,
   RelationKind,
@@ -170,31 +168,6 @@ export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): P
   return rows.map(toLibraryWord);
 }
 
-/** Numbers for the library's stats strip. */
-export async function getLibraryStats(db: SQLiteDatabase): Promise<LibraryStats> {
-  const row = await db.getFirstAsync<{ total: number; starred: number }>(
-    `SELECT COUNT(*) AS total, COUNT(starred_at) AS starred FROM words WHERE saved_at IS NOT NULL`,
-  );
-  const reviews = await db.getFirstAsync<{ correct: number; total: number }>(
-    `SELECT COALESCE(SUM(l.rating > 1), 0) AS correct, COUNT(*) AS total
-       FROM review_logs l JOIN words w ON w.id = l.word_id WHERE w.saved_at IS NOT NULL`,
-  );
-  // "Known" uses the same rule as the badge on each card.
-  const statuses = await db.getFirstAsync<{ known: number }>(
-    `SELECT COALESCE(SUM(n >= 3 AND acc >= 0.8), 0) AS known
-       FROM (SELECT COUNT(l.id) AS n, AVG(l.rating > 1) AS acc
-               FROM words w JOIN review_logs l ON l.word_id = w.id
-              WHERE w.saved_at IS NOT NULL
-              GROUP BY w.id)`,
-  );
-  return {
-    total: row?.total ?? 0,
-    starred: row?.starred ?? 0,
-    known: statuses?.known ?? 0,
-    accuracy: reviews && reviews.total > 0 ? reviews.correct / reviews.total : null,
-  };
-}
-
 export async function getRecentlyAdded(db: SQLiteDatabase, limit: number): Promise<Word[]> {
   const rows = await db.getAllAsync<WordRow>(
     'SELECT * FROM words WHERE saved_at IS NOT NULL ORDER BY saved_at DESC LIMIT ?',
@@ -348,11 +321,6 @@ export async function setWordStarred(db: SQLiteDatabase, id: number, starred: bo
       WHERE id = ?`,
     starred ? now : null, starred ? 1 : 0, now, id,
   );
-  await markDirtyById(db, 'word', id);
-}
-
-export async function updateWordNotes(db: SQLiteDatabase, id: number, notes: string) {
-  await db.runAsync('UPDATE words SET notes = ? WHERE id = ?', notes, id);
   await markDirtyById(db, 'word', id);
 }
 
@@ -607,33 +575,12 @@ export async function setSentenceFavorite(db: SQLiteDatabase, id: number, favori
 
 // ── Review ───────────────────────────────────────────────────
 
-/** All ⭐ starred words, in random order, for a review session. */
-export async function getStarredShuffled(db: SQLiteDatabase): Promise<Word[]> {
+/** All ⭐ starred words, newest star first, for 復習. */
+export async function getStarredWords(db: SQLiteDatabase): Promise<Word[]> {
   const rows = await db.getAllAsync<WordRow>(
-    'SELECT * FROM words WHERE starred_at IS NOT NULL ORDER BY RANDOM()',
+    'SELECT * FROM words WHERE starred_at IS NOT NULL ORDER BY starred_at DESC',
   );
   return rows.map(toWord);
-}
-
-export async function countStarred(db: SQLiteDatabase): Promise<number> {
-  const row = await db.getFirstAsync<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM words WHERE starred_at IS NOT NULL',
-  );
-  return row?.n ?? 0;
-}
-
-/** Remember each answer, so the library can show which words you know (習得). */
-export async function recordReview(
-  db: SQLiteDatabase,
-  wordId: number,
-  remembered: boolean,
-  now = new Date(),
-) {
-  const result = await db.runAsync(
-    `INSERT INTO review_logs (word_id, rating, state, reviewed_at, day, uid) VALUES (?, ?, 0, ?, ?, ${NEW_UID})`,
-    wordId, remembered ? 3 : 1, now.toISOString(), toLocalDay(now),
-  );
-  await markDirtyById(db, 'review', result.lastInsertRowId);
 }
 
 // ── Topics ───────────────────────────────────────────────────
