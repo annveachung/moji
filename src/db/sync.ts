@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { guessVerbGroup } from '@/lib/verb';
+
 /**
  * The local side of sync. moji-api keeps the master copy; this file turns local rows into
  * sync items (to upload) and sync items back into rows (after downloading).
@@ -107,6 +109,7 @@ async function serialize(db: SQLiteDatabase, kind: SyncKind, uid: string): Promi
         meaningEn: w.meaning_en,
         meaningZh: w.meaning_zh,
         pos: w.pos,
+        verbGroup: w.verb_group,
         jlpt: w.jlpt,
         topic: w.topic,
         tags: JSON.parse(String(w.tags)),
@@ -145,6 +148,7 @@ async function serialize(db: SQLiteDatabase, kind: SyncKind, uid: string): Promi
         jlpt: g.jlpt,
         formation: g.formation,
         explanation: g.explanation,
+        starredAt: g.starred_at,
         createdAt: g.created_at,
       };
     }
@@ -216,14 +220,17 @@ async function upsertLocal(db: SQLiteDatabase, kind: SyncKind, uid: string, d: D
       return;
     case 'word': {
       const values = [
-        d.word, d.furigana, d.reading, d.meaningEn ?? '', d.meaningZh ?? '', d.pos ?? 'noun', d.jlpt ?? null,
+        d.word, d.furigana, d.reading, d.meaningEn ?? '', d.meaningZh ?? '', d.pos ?? 'noun',
+        // From an older app version, verbs arrive without a group: work it out here.
+        d.pos === 'verb' ? (d.verbGroup ?? guessVerbGroup(d.word, d.reading)) : null,
+        d.jlpt ?? null,
         d.topic ?? null, JSON.stringify(d.tags ?? []), d.notes ?? '', d.zhLinkKind ?? null, d.zhNoteEn ?? null,
         d.zhNoteZh ?? null, d.savedAt ?? null, d.starredAt ?? null,
       ];
       const id = await idFor(db, 'word', uid);
       if (id !== null) {
         await db.runAsync(
-          `UPDATE words SET word = ?, furigana = ?, reading = ?, meaning_en = ?, meaning_zh = ?, pos = ?, jlpt = ?,
+          `UPDATE words SET word = ?, furigana = ?, reading = ?, meaning_en = ?, meaning_zh = ?, pos = ?, verb_group = ?, jlpt = ?,
                             topic = ?, tags = ?, notes = ?, zh_link_kind = ?, zh_note_en = ?, zh_note_zh = ?,
                             saved_at = ?, starred_at = ?
             WHERE id = ?`,
@@ -231,9 +238,9 @@ async function upsertLocal(db: SQLiteDatabase, kind: SyncKind, uid: string, d: D
         );
       } else {
         await db.runAsync(
-          `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, jlpt, topic, tags, notes,
+          `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, verb_group, jlpt, topic, tags, notes,
                               zh_link_kind, zh_note_en, zh_note_zh, saved_at, starred_at, is_custom, uid, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
           ...values, d.catalog ? 0 : 1, uid, d.createdAt ?? null,
         );
       }
@@ -264,17 +271,19 @@ async function upsertLocal(db: SQLiteDatabase, kind: SyncKind, uid: string, d: D
       return;
     }
     case 'grammar': {
-      const values = [d.pattern, d.meaningEn ?? '', d.meaningZh ?? '', d.jlpt ?? null, d.formation ?? '', d.explanation ?? ''];
+      const values = [
+        d.pattern, d.meaningEn ?? '', d.meaningZh ?? '', d.jlpt ?? null, d.formation ?? '', d.explanation ?? '', d.starredAt ?? null,
+      ];
       const id = await idFor(db, 'grammar', uid);
       if (id !== null) {
         await db.runAsync(
-          'UPDATE grammar SET pattern = ?, meaning_en = ?, meaning_zh = ?, jlpt = ?, formation = ?, explanation = ? WHERE id = ?',
+          'UPDATE grammar SET pattern = ?, meaning_en = ?, meaning_zh = ?, jlpt = ?, formation = ?, explanation = ?, starred_at = ? WHERE id = ?',
           ...values, id,
         );
       } else {
         await db.runAsync(
-          `INSERT INTO grammar (pattern, meaning_en, meaning_zh, jlpt, formation, explanation, uid, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
+          `INSERT INTO grammar (pattern, meaning_en, meaning_zh, jlpt, formation, explanation, starred_at, uid, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
           ...values, uid, d.createdAt ?? null,
         );
       }

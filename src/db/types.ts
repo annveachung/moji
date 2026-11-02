@@ -1,5 +1,11 @@
 export type PartOfSpeech = 'noun' | 'verb' | 'i-adj' | 'na-adj' | 'adverb' | 'expression';
 
+/**
+ * The three verb groups (see lib/verb.ts): 五段 godan (Group 1), 一段 ichidan (Group 2),
+ * 不規則 irregular (Group 3: する, 来る). Stored separately from conjugation forms (活用形).
+ */
+export type VerbGroup = 'godan' | 'ichidan' | 'irregular';
+
 /** The topics moji starts with. The AI can add more (stored in the topics table). */
 export const BUILT_IN_TOPICS = ['daily-life', 'travel', 'relationships', 'work-tech', 'anime-games'] as const;
 
@@ -42,6 +48,8 @@ export type Word = {
   meaningEn: string;
   meaningZh: string;
   pos: PartOfSpeech;
+  /** Verbs only; null for every other part of speech. */
+  verbGroup: VerbGroup | null;
   jlpt: JlptLevel | null;
   topic: Topic | null;
   tags: string[];
@@ -101,6 +109,8 @@ export type ReviewFilter = 'all' | 'starred';
 export type LibraryFilters = {
   search: string;
   pos: PartOfSpeech | null;
+  /** Narrows 動詞 to one group. */
+  verbGroup: VerbGroup | null;
   jlpt: JlptLevel | null;
   topic: TopicFilter | null;
   status: ReviewFilter;
@@ -113,6 +123,8 @@ export type WordInput = {
   meaningEn: string;
   meaningZh: string;
   pos: PartOfSpeech;
+  /** For verbs; worked out from the reading when left out. */
+  verbGroup?: VerbGroup | null;
   jlpt: JlptLevel | null;
   notes: string;
   starred: boolean;
@@ -157,6 +169,8 @@ export type GrammarRule = {
   /** How it attaches (接続), e.g. "Verb て-form + も". */
   formation: string;
   explanation: string;
+  /** When you ⭐ starred it for 復習; null = not starred. */
+  starredAt: string | null;
   /** Number of example sentences saved for it. */
   sentenceCount: number;
 };
