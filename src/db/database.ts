@@ -1,6 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { Platform } from 'react-native';
 
+import { guessVerbGroup } from '@/lib/verb';
+
 import { SEED_RELATIONS, SEED_WORDS } from './seed-data';
 
 export const DATABASE_NAME = 'moji.db';
@@ -9,7 +11,7 @@ export const DATABASE_NAME = 'moji.db';
  * Bump this and add a `if (version < N)` block below whenever the schema changes.
  * SQLite remembers the version in `PRAGMA user_version`, so each migration runs once.
  */
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -193,6 +195,28 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         INSERT INTO outbox (kind, uid) SELECT 'grammar', uid FROM grammar;
         INSERT INTO outbox (kind, uid) SELECT 'grammarSentence', uid FROM grammar_sentences;
       `);
+    }
+    if (version < 5) {
+      // Verb groups (五段・一段・不規則), stored on their own; and ⭐ for grammar rules (復習).
+      await tx.execAsync(`
+        ALTER TABLE words ADD COLUMN verb_group TEXT;
+        ALTER TABLE grammar ADD COLUMN starred_at TEXT;
+      `);
+      // Sort the verbs already here. Yours go up to the server with their new group.
+      const verbs = await tx.getAllAsync<{ id: number; word: string; reading: string; uid: string; mine: number }>(
+        `SELECT id, word, reading, uid, (saved_at IS NOT NULL OR is_custom = 1) AS mine FROM words WHERE pos = 'verb'`,
+      );
+      for (const verb of verbs) {
+        const group = guessVerbGroup(verb.word, verb.reading);
+        if (!group) continue;
+        await tx.runAsync('UPDATE words SET verb_group = ? WHERE id = ?', group, verb.id);
+        if (verb.mine) {
+          await tx.runAsync(
+            "INSERT INTO outbox (kind, uid) VALUES ('word', ?) ON CONFLICT (kind, uid) DO UPDATE SET version = version + 1",
+            verb.uid,
+          );
+        }
+      }
     }
     await tx.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });

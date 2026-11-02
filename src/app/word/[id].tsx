@@ -26,6 +26,7 @@ import { furiganaToReading } from '@/lib/furigana';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
 import { useLayout } from '@/lib/layout';
+import { posLabel } from '@/lib/verb';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -179,7 +180,7 @@ export default function WordDetailScreen() {
               className="font-bold text-ink"
               containerClassName="justify-center"
             />
-            <Pill label={t(`pos.${word.pos}`)} tone="outline" />
+            <Pill label={posLabel(t, word)} tone="outline" />
           </View>
 
           <View className="flex-row items-center justify-between rounded-2xl bg-surface-low p-2.5">

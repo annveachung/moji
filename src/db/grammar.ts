@@ -16,6 +16,7 @@ type GrammarRow = {
   jlpt: JlptLevel | null;
   formation: string;
   explanation: string;
+  starred_at: string | null;
   sentence_count: number;
 };
 
@@ -40,6 +41,7 @@ function toRule(row: GrammarRow): GrammarRule {
     jlpt: row.jlpt,
     formation: row.formation,
     explanation: row.explanation,
+    starredAt: row.starred_at,
     sentenceCount: row.sentence_count,
   };
 }
@@ -75,6 +77,20 @@ export async function getGrammarRules(
 export async function getGrammarRule(db: SQLiteDatabase, id: number): Promise<GrammarRule | null> {
   const row = await db.getFirstAsync<GrammarRow>(`${SELECT_RULE} WHERE g.id = ?`, id);
   return row ? toRule(row) : null;
+}
+
+/** ⭐ Star a rule to review it in 復習 (文法). */
+export async function setGrammarStarred(db: SQLiteDatabase, id: number, starred: boolean) {
+  await db.runAsync('UPDATE grammar SET starred_at = ? WHERE id = ?', starred ? new Date().toISOString() : null, id);
+  await markDirtyById(db, 'grammar', id);
+}
+
+/** Your ⭐ rules: newest star first (for the list), or shuffled (for a review round). */
+export async function getStarredGrammar(db: SQLiteDatabase, order: 'recent' | 'shuffled'): Promise<GrammarRule[]> {
+  const rows = await db.getAllAsync<GrammarRow>(
+    `${SELECT_RULE} WHERE g.starred_at IS NOT NULL ORDER BY ${order === 'recent' ? 'g.starred_at DESC' : 'RANDOM()'}`,
+  );
+  return rows.map(toRule);
 }
 
 export async function countGrammarRules(db: SQLiteDatabase): Promise<number> {

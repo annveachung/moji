@@ -13,6 +13,7 @@ import { showAlert } from '@/lib/alert';
 import { fillWord, resolveTopic, toWordInput } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { makeFurigana } from '@/lib/furigana';
+import { guessVerbGroup, VERB_GROUPS } from '@/lib/verb';
 import { useLayout } from '@/lib/layout';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -63,6 +64,7 @@ export default function WordFormScreen() {
         meaningEn: word.meaningEn,
         meaningZh: word.meaningZh,
         pos: word.pos,
+        verbGroup: word.verbGroup,
         jlpt: word.jlpt,
         notes: word.notes,
         starred: word.starredAt !== null,
@@ -241,6 +243,23 @@ export default function WordFormScreen() {
             ))}
           </View>
         </Field>
+
+        {/* Verbs: which of the three groups. Worked out from the reading until you pick one. */}
+        {form.pos === 'verb' ? (
+          <Field label={t('form.verbGroup')}>
+            <View className="flex-row flex-wrap gap-2">
+              {VERB_GROUPS.map((group) => (
+                <Chip
+                  key={group}
+                  label={t(`verbGroup.${group}`)}
+                  selected={(form.verbGroup ?? guessVerbGroup(form.word, form.reading)) === group}
+                  onPress={() => update({ verbGroup: group })}
+                />
+              ))}
+            </View>
+            <Text className="px-1 text-[11px] leading-4 text-ink-muted">{t('verbGroup.hint')}</Text>
+          </Field>
+        ) : null}
 
         <Field label={t('form.jlpt')}>
           <View className="flex-row flex-wrap gap-2">

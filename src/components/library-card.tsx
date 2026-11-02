@@ -6,6 +6,7 @@ import type { LibraryFilters, LibraryWord } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { relativeDay } from '@/lib/relative-time';
 import { speakJapanese } from '@/lib/speech';
+import { posLabel } from '@/lib/verb';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -75,11 +76,15 @@ export function LibraryCard({
               onPress={() => onFilter({ jlpt: filters.jlpt === word.jlpt ? null : word.jlpt })}
             />
           ) : null}
+          {/* Tapping 五段動詞 etc. filters to that verb group; other parts of speech filter by themselves. */}
           <TagPill
-            label={t(`pos.${word.pos}`)}
+            label={posLabel(t, word)}
             tone="neutral"
-            active={filters.pos === word.pos}
-            onPress={() => onFilter({ pos: filters.pos === word.pos ? null : word.pos })}
+            active={filters.pos === word.pos && (word.pos !== 'verb' || filters.verbGroup === word.verbGroup)}
+            onPress={() => {
+              const active = filters.pos === word.pos && (word.pos !== 'verb' || filters.verbGroup === word.verbGroup);
+              onFilter(active ? { pos: null, verbGroup: null } : { pos: word.pos, verbGroup: word.verbGroup });
+            }}
           />
           {/* Words without a topic (like most you add yourself) are grouped as その他. */}
           <TagPill

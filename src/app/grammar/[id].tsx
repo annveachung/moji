@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton } from '@/components/ui';
-import { deleteGrammarSentence, getGrammarRule, getGrammarSentences, saveGrammarSentence } from '@/db/grammar';
+import { deleteGrammarSentence, getGrammarRule, getGrammarSentences, saveGrammarSentence, setGrammarStarred } from '@/db/grammar';
 import type { GrammarRule, GrammarSentence } from '@/db/types';
 import { showAlert } from '@/lib/alert';
 import { generateGrammarSentence, type AiSentence } from '@/lib/ai';
@@ -124,13 +124,25 @@ export default function GrammarDetailScreen() {
         <View className="gap-3 rounded-[28px] bg-card p-5 shadow-md shadow-ink/10">
           <View className="flex-row items-center justify-between">
             {rule.jlpt !== null ? <Pill label={`JLPT N${rule.jlpt}`} tone="mustard" /> : <View />}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => updateSettings({ meaningLanguage: zh ? 'en' : 'zh-TW' })}
-              className="flex-row items-center gap-1 rounded-full bg-surface-high px-3 py-1.5 active:bg-primary-soft">
-              <Icon name="translate" size={14} />
-              <Text className="font-display text-[12px] text-ink">{zh ? 'EN' : '中文'}</Text>
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              <IconButton
+                icon={rule.starredAt ? 'star' : 'star-border'}
+                tone={rule.starredAt ? 'star' : 'quiet'}
+                size={36}
+                label={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
+                onPress={async () => {
+                  await setGrammarStarred(db, rule.id, rule.starredAt === null);
+                  load();
+                }}
+              />
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => updateSettings({ meaningLanguage: zh ? 'en' : 'zh-TW' })}
+                className="flex-row items-center gap-1 rounded-full bg-surface-high px-3 py-1.5 active:bg-primary-soft">
+                <Icon name="translate" size={14} />
+                <Text className="font-display text-[12px] text-ink">{zh ? 'EN' : '中文'}</Text>
+              </Pressable>
+            </View>
           </View>
           <Text className="text-center text-[36px] font-bold leading-[44px] text-ink">{rule.pattern}</Text>
           <View className="rounded-2xl bg-primary-soft/60 p-4">

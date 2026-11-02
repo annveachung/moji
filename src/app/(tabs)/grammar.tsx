@@ -12,6 +12,7 @@ import {
   applyGrammarImport,
   getGrammarRules,
   planGrammarImport,
+  setGrammarStarred,
   type GrammarImportPlan,
 } from '@/db/grammar';
 import type { GrammarRule, JlptLevel } from '@/db/types';
@@ -51,6 +52,11 @@ export default function GrammarScreen() {
   useFocusEffect(load);
 
   const filtering = search.trim() !== '' || level !== null;
+
+  const toggleStar = async (rule: GrammarRule) => {
+    await setGrammarStarred(db, rule.id, rule.starredAt === null);
+    load();
+  };
 
   /** Pick a CSV, read it, and open the review sheet. Nothing is saved until you confirm. */
   const importCsv = async () => {
@@ -161,15 +167,17 @@ export default function GrammarScreen() {
           ) : undefined
         }
         renderItem={({ item }) => (
-          <View style={layout.columns > 1 ? { flex: 1 } : undefined}>{item ? <GrammarCard rule={item} /> : null}</View>
+          <View style={layout.columns > 1 ? { flex: 1 } : undefined}>
+            {item ? <GrammarCard rule={item} onToggleStar={() => toggleStar(item)} /> : null}
+          </View>
         )}
       />
     </View>
   );
 }
 
-/** One rule in the list: pattern, level, meaning, formation and how many examples. */
-function GrammarCard({ rule }: { rule: GrammarRule }) {
+/** One rule in the list: pattern, level, ⭐, meaning, formation and how many examples. */
+function GrammarCard({ rule, onToggleStar }: { rule: GrammarRule; onToggleStar: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -183,6 +191,13 @@ function GrammarCard({ rule }: { rule: GrammarRule }) {
       <View className="flex-row items-start justify-between gap-2">
         <Text className="flex-1 text-[22px] font-bold leading-7 text-ink">{rule.pattern}</Text>
         {rule.jlpt !== null ? <Pill label={`N${rule.jlpt}`} tone="mustard" /> : null}
+        <IconButton
+          icon={rule.starredAt ? 'star' : 'star-border'}
+          tone={rule.starredAt ? 'star' : 'quiet'}
+          size={32}
+          label={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
+          onPress={onToggleStar}
+        />
       </View>
       <Text className="text-[15px] font-semibold leading-5 text-ink">{meaningFor(rule, settings.meaningLanguage)}</Text>
       {rule.formation ? (

@@ -10,6 +10,7 @@ import { showAlert } from '@/lib/alert';
 import { fillWord, resolveTopic, toWordInput } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { meaningFor } from '@/lib/meaning';
+import { posLabel } from '@/lib/verb';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -113,7 +114,7 @@ export function QuickAdd({ onAdded }: { onAdded: () => void }) {
           <Text className="text-[15px] font-semibold text-ink">{meaningFor(added, settings.meaningLanguage)}</Text>
           <View className="flex-row flex-wrap items-center gap-2">
             {added.jlpt !== null ? <Pill label={`N${added.jlpt}`} tone="mustard" /> : null}
-            <Pill label={t(`pos.${added.pos}`)} tone="outline" />
+            <Pill label={posLabel(t, added)} tone="outline" />
             <Pill label={topicLabel(added.topic)} tone="outline" />
             <View className="flex-1" />
             <Pressable

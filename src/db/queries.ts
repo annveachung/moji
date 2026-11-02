@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { toLocalDay } from '@/lib/date';
 import { kanjiIn, makeFurigana } from '@/lib/furigana';
+import { guessVerbGroup } from '@/lib/verb';
 
 import { markDirty, markDirtyById, markWordChildrenDeleted, NEW_UID } from './sync';
 
@@ -18,6 +19,7 @@ import type {
   Sentence,
   Suggestion,
   Topic,
+  VerbGroup,
   Word,
   WordInput,
 } from './types';
@@ -30,6 +32,7 @@ type WordRow = {
   meaning_en: string;
   meaning_zh: string;
   pos: Word['pos'];
+  verb_group: Word['verbGroup'];
   jlpt: Word['jlpt'];
   topic: Word['topic'];
   tags: string;
@@ -62,6 +65,7 @@ function toWord(row: WordRow): Word {
     meaningEn: row.meaning_en,
     meaningZh: row.meaning_zh,
     pos: row.pos,
+    verbGroup: row.pos === 'verb' ? row.verb_group : null,
     jlpt: row.jlpt,
     topic: row.topic,
     tags: JSON.parse(row.tags),
@@ -132,6 +136,10 @@ export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): P
   if (filters.pos) {
     where.push('w.pos = ?');
     params.push(filters.pos);
+  }
+  if (filters.pos === 'verb' && filters.verbGroup) {
+    where.push('w.verb_group = ?');
+    params.push(filters.verbGroup);
   }
   if (filters.jlpt) {
     where.push('w.jlpt = ?');
@@ -361,11 +369,11 @@ export async function insertWord(db: SQLiteDatabase, input: WordInput): Promise<
 async function insertWordRows(db: SQLiteDatabase, input: WordInput): Promise<number> {
   const now = new Date().toISOString();
   const result = await db.runAsync(
-    `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, jlpt, topic, notes,
+    `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, verb_group, jlpt, topic, notes,
                         zh_link_kind, zh_note_en, zh_note_zh, is_custom, saved_at, starred_at, uid)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ${NEW_UID})`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ${NEW_UID})`,
     input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
-    input.meaningZh, input.pos, input.jlpt, input.topic ?? null, input.notes, input.zhLinkKind ?? null,
+    input.meaningZh, input.pos, verbGroupFor(input), input.jlpt, input.topic ?? null, input.notes, input.zhLinkKind ?? null,
     input.zhNoteEn || null, input.zhNoteZh || null, now, input.starred ? now : null,
   );
   await markDirtyById(db, 'word', result.lastInsertRowId);
@@ -378,10 +386,10 @@ export async function updateWord(db: SQLiteDatabase, id: number, input: WordInpu
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `UPDATE words SET word = ?, furigana = ?, reading = ?, meaning_en = ?, meaning_zh = ?,
-                        pos = ?, jlpt = ?, notes = ?, starred_at = ?
+                        pos = ?, verb_group = ?, jlpt = ?, notes = ?, starred_at = ?
         WHERE id = ?`,
       input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
-      input.meaningZh, input.pos, input.jlpt, input.notes,
+      input.meaningZh, input.pos, verbGroupFor(input), input.jlpt, input.notes,
       input.starred ? (existing?.starredAt ?? new Date().toISOString()) : null, id,
     );
     await markDirtyById(db, 'word', id);
@@ -443,13 +451,15 @@ async function mergeCsvInto(db: SQLiteDatabase, id: number, csv: CsvWord, now: s
        meaning_en = COALESCE(NULLIF(?, ''), meaning_en),
        meaning_zh = COALESCE(NULLIF(?, ''), meaning_zh),
        pos = ?,
+       verb_group = CASE WHEN ? = 'verb' THEN COALESCE(?, verb_group) END,
        jlpt = COALESCE(?, jlpt),
        topic = COALESCE(?, topic),
        notes = COALESCE(NULLIF(?, ''), notes),
        saved_at = COALESCE(saved_at, ?),
        starred_at = CASE WHEN ? THEN COALESCE(starred_at, ?) ELSE starred_at END
      WHERE id = ?`,
-    csv.meaningEn, csv.meaningZh, csv.pos, csv.jlpt, csv.topic, csv.notes, now,
+    csv.meaningEn, csv.meaningZh, csv.pos, csv.pos, csv.verbGroup ?? guessVerbGroup(csv.word, csv.reading), csv.jlpt,
+    csv.topic, csv.notes, now,
     csv.starred ? 1 : 0, now, id,
   );
   await markDirtyById(db, 'word', id);
@@ -475,6 +485,7 @@ export async function applyImport(
         meaningEn: csv.meaningEn,
         meaningZh: csv.meaningZh,
         pos: csv.pos,
+        verbGroup: csv.verbGroup,
         jlpt: csv.jlpt,
         topic: csv.topic,
         notes: csv.notes,
@@ -505,6 +516,12 @@ async function saveExample(db: SQLiteDatabase, wordId: number, input: WordInput)
     wordId, ja, en, zh,
   );
   await markDirtyById(db, 'sentence', result.lastInsertRowId);
+}
+
+/** A verb's group: the one given (form, AI, import), else worked out from the reading. Non-verbs: none. */
+function verbGroupFor(input: Pick<WordInput, 'word' | 'reading' | 'pos' | 'verbGroup'>): VerbGroup | null {
+  if (input.pos !== 'verb') return null;
+  return input.verbGroup ?? guessVerbGroup(input.word, input.reading);
 }
 
 /** Wrap the first appearance of the word in {braces}, so it gets highlighted. */

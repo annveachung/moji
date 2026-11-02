@@ -1,13 +1,16 @@
-import { BUILT_IN_TOPICS, type JlptLevel, type PartOfSpeech, type Topic, type Word } from '@/db/types';
+import { BUILT_IN_TOPICS, type JlptLevel, type PartOfSpeech, type Topic, type VerbGroup, type Word } from '@/db/types';
 import en from '@/i18n/en';
 import ja from '@/i18n/ja';
 import zhTW from '@/i18n/zh-TW';
 
 import { parseCsv, toCsv } from './csv';
+import { parseVerbGroup } from './verb';
 
 /**
  * Library ⇄ spreadsheet. One row per word:
- *   word, reading, meaning_en, meaning_zh, part_of_speech, jlpt, topic, notes, starred
+ *   word, reading, meaning_en, meaning_zh, part_of_speech, jlpt, topic, notes, starred, verb_group
+ * verb_group (godan / ichidan / irregular, or 五段 / 一段 / 不規則) is last, so older files still line up;
+ * left empty for a verb, it's worked out from the reading.
  */
 export const CSV_COLUMNS = [
   'word',
@@ -19,6 +22,7 @@ export const CSV_COLUMNS = [
   'topic',
   'notes',
   'starred',
+  'verb_group',
 ] as const;
 
 /** A word read from a spreadsheet row, ready to add or merge. */
@@ -29,6 +33,7 @@ export type CsvWord = {
   meaningEn: string;
   meaningZh: string;
   pos: PartOfSpeech;
+  verbGroup: VerbGroup | null;
   jlpt: JlptLevel | null;
   topic: Topic | null;
   notes: string;
@@ -107,6 +112,7 @@ export function csvToWords(text: string): { words: CsvWord[]; problems: CsvProbl
       meaningEn,
       meaningZh,
       pos: parsePos(cell(row, 'part_of_speech')),
+      verbGroup: parseVerbGroup(cell(row, 'verb_group')),
       jlpt: parseJlpt(cell(row, 'jlpt')),
       topic: parseTopic(cell(row, 'topic')),
       notes: cell(row, 'notes'),
@@ -130,6 +136,7 @@ export function wordsToCsv(words: Word[]): string {
       w.topic ?? '',
       w.notes,
       w.starredAt ? 'yes' : '',
+      w.verbGroup ?? '',
     ]),
   ]);
 }

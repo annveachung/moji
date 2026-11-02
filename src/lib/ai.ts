@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { addTopic } from '@/db/queries';
-import type { ChineseLinkKind, JlptLevel, PartOfSpeech, Topic, WordInput } from '@/db/types';
+import type { ChineseLinkKind, JlptLevel, PartOfSpeech, Topic, VerbGroup, WordInput } from '@/db/types';
 
 import { apiFetch } from './api';
 
@@ -24,6 +24,7 @@ export type FilledWord = {
   meaningEn: string;
   meaningZh: string;
   pos: PartOfSpeech;
+  verbGroup: VerbGroup | 'none';
   /** 0 = not on the JLPT lists. */
   jlpt: 0 | JlptLevel;
   example: { ja: string; en: string; zh: string };
@@ -60,6 +61,8 @@ export function toWordInput(filled: FilledWord, topic: Topic | null, starred = f
     meaningEn: filled.meaningEn,
     meaningZh: filled.meaningZh,
     pos: filled.pos,
+    // Older servers don't send it; then the app works it out from the reading.
+    verbGroup: filled.verbGroup && filled.verbGroup !== 'none' ? filled.verbGroup : null,
     jlpt: filled.jlpt === 0 ? null : filled.jlpt,
     notes: '',
     starred,

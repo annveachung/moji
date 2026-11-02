@@ -33,6 +33,7 @@ import { pickCsvText, shareCsv } from '@/lib/file-io';
 import { padRows, useLayout } from '@/lib/layout';
 import { meaningFor } from '@/lib/meaning';
 import { useSortOther } from '@/lib/use-sort-other';
+import { VERB_GROUPS } from '@/lib/verb';
 import { csvToWords, wordsToCsv, type CsvProblem } from '@/lib/word-csv';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
@@ -41,7 +42,7 @@ import colors from '@/theme/colors';
 const STATUSES: ReviewFilter[] = ['all', 'starred'];
 const POS: PartOfSpeech[] = ['noun', 'verb', 'i-adj', 'na-adj', 'adverb', 'expression'];
 const JLPT: JlptLevel[] = [5, 4, 3, 2, 1];
-const NO_FILTERS: LibraryFilters = { search: '', pos: null, jlpt: null, topic: null, status: 'all' };
+const NO_FILTERS: LibraryFilters = { search: '', pos: null, verbGroup: null, jlpt: null, topic: null, status: 'all' };
 
 type ViewMode = 'list' | 'grid';
 
@@ -75,6 +76,7 @@ export default function LibraryScreen() {
   const filtering =
     filters.search.trim() !== '' ||
     filters.pos !== null ||
+    filters.verbGroup !== null ||
     filters.jlpt !== null ||
     filters.topic !== null ||
     filters.status !== 'all';
@@ -202,10 +204,23 @@ export default function LibraryScreen() {
             key={pos}
             label={t(`pos.${pos}`)}
             selected={filters.pos === pos}
-            onPress={() => update({ pos: filters.pos === pos ? null : pos })}
+            onPress={() => update({ pos: filters.pos === pos ? null : pos, verbGroup: null })}
           />
         ))}
       </ScrollView>
+      {/* 動詞 picked: narrow to one verb group */}
+      {filters.pos === 'verb' ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
+          {VERB_GROUPS.map((group) => (
+            <Chip
+              key={group}
+              label={t(`verbGroup.${group}`)}
+              selected={filters.verbGroup === group}
+              onPress={() => update({ verbGroup: filters.verbGroup === group ? null : group })}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
 
       {/* Topic filters come from tapping a topic tag on a card; show it so it can be cleared. */}
       {filters.topic !== null ? (
