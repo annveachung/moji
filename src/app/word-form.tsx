@@ -78,7 +78,7 @@ export default function WordFormScreen() {
     setErrors([]);
   };
 
-  /** Ask the AI for everything except your notes and the ⭐. */
+  /** Ask the AI for everything except the ⭐. */
   const fillWithAi = async () => {
     const typed = form.word.trim();
     if (!typed) {
@@ -284,9 +284,6 @@ export default function WordFormScreen() {
           />
         </Field>
 
-        <Field label={t('form.notes')}>
-          <Input value={form.notes} onChangeText={(notes) => update({ notes })} multiline />
-        </Field>
 
         <View className="min-h-[52px] flex-row items-center justify-between rounded-2xl bg-card px-4 shadow-sm shadow-ink/10">
           <Text className="text-[15px] font-semibold text-ink">{t('form.star')}</Text>
