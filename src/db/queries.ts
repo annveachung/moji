@@ -122,7 +122,7 @@ function toLibraryWord(row: LibraryRow): LibraryWord {
   };
 }
 
-/** Your library: saved words, newest first, narrowed by search and filters. */
+/** Your library: saved words, newest first (⭐ only: newest star first), narrowed by search and filters. */
 export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): Promise<LibraryWord[]> {
   const where = ['w.saved_at IS NOT NULL'];
   const params: (string | number)[] = [];
@@ -162,7 +162,7 @@ export async function getLibrary(db: SQLiteDatabase, filters: LibraryFilters): P
          SELECT id FROM sentences WHERE word_id = w.id ORDER BY favorite DESC, seen DESC, id LIMIT 1
        )
       WHERE ${where.join(' AND ')}
-      ORDER BY w.saved_at DESC`,
+      ORDER BY ${filters.status === 'starred' ? 'w.starred_at' : 'w.saved_at'} DESC`,
     ...params,
   );
   return rows.map(toLibraryWord);
@@ -574,14 +574,6 @@ export async function setSentenceFavorite(db: SQLiteDatabase, id: number, favori
 }
 
 // ── Review ───────────────────────────────────────────────────
-
-/** All ⭐ starred words, newest star first, for 復習. */
-export async function getStarredWords(db: SQLiteDatabase): Promise<Word[]> {
-  const rows = await db.getAllAsync<WordRow>(
-    'SELECT * FROM words WHERE starred_at IS NOT NULL ORDER BY starred_at DESC',
-  );
-  return rows.map(toWord);
-}
 
 // ── Topics ───────────────────────────────────────────────────
 

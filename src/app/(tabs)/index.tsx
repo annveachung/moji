@@ -2,13 +2,14 @@ import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
 import { QuickAdd } from '@/components/quick-add';
+import { WordFilters } from '@/components/word-filters';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
-import { Chip, EmptyState, Icon, IconButton, type IconName } from '@/components/ui';
+import { EmptyState, Icon, IconButton, type IconName } from '@/components/ui';
 import {
   applyImport,
   getAllLibraryWords,
@@ -17,28 +18,18 @@ import {
   setWordStarred,
   type ImportPlan,
 } from '@/db/queries';
-import type {
-  JlptLevel,
-  LibraryFilters,
-  LibraryWord,
-  PartOfSpeech,
-  ReviewFilter,
-} from '@/db/types';
+import type { LibraryFilters, LibraryWord } from '@/db/types';
 import { showAlert } from '@/lib/alert';
 import { toLocalDay } from '@/lib/date';
 import { pickCsvText, shareCsv } from '@/lib/file-io';
 import { padRows, useLayout } from '@/lib/layout';
 import { meaningFor } from '@/lib/meaning';
 import { useSortOther } from '@/lib/use-sort-other';
-import { VERB_GROUPS } from '@/lib/verb';
 import { csvToWords, wordsToCsv, type CsvProblem } from '@/lib/word-csv';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
-const STATUSES: ReviewFilter[] = ['all', 'starred'];
-const POS: PartOfSpeech[] = ['noun', 'verb', 'i-adj', 'na-adj', 'adverb', 'expression'];
-const JLPT: JlptLevel[] = [5, 4, 3, 2, 1];
 const NO_FILTERS: LibraryFilters = { search: '', pos: null, verbGroup: null, jlpt: null, topic: null, status: 'all' };
 
 type ViewMode = 'list' | 'grid';
@@ -158,62 +149,13 @@ export default function LibraryScreen() {
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
-        {STATUSES.map((status) => (
-          <Chip
-            key={status}
-            label={t(`library.status.${status}`)}
-            selected={filters.status === status}
-            onPress={() => update({ status })}
-          />
-        ))}
-        <View className="mx-1 w-px bg-ink/15" />
-        {JLPT.map((level) => (
-          <Chip
-            key={level}
-            label={`N${level}`}
-            selected={filters.jlpt === level}
-            onPress={() => update({ jlpt: filters.jlpt === level ? null : level })}
-          />
-        ))}
-      </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
-        {POS.map((pos) => (
-          <Chip
-            key={pos}
-            label={t(`pos.${pos}`)}
-            selected={filters.pos === pos}
-            onPress={() => update({ pos: filters.pos === pos ? null : pos, verbGroup: null })}
-          />
-        ))}
-      </ScrollView>
-      {/* 動詞 picked: narrow to one verb group */}
-      {filters.pos === 'verb' ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
-          {VERB_GROUPS.map((group) => (
-            <Chip
-              key={group}
-              label={t(`verbGroup.${group}`)}
-              selected={filters.verbGroup === group}
-              onPress={() => update({ verbGroup: filters.verbGroup === group ? null : group })}
-            />
-          ))}
-        </ScrollView>
-      ) : null}
-
-      {/* Topic filters come from tapping a topic tag on a card; show it so it can be cleared. */}
-      {filters.topic !== null ? (
-        <View className="flex-row flex-wrap items-center gap-2">
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => update({ topic: null })}
-            className="flex-row items-center gap-1.5 self-start rounded-full bg-primary-soft px-3 py-1.5">
-            <Icon name="filter-alt" size={14} color={colors.primary.DEFAULT} />
-            <Text className="font-display-semibold text-[12px] text-primary">{topicLabel(filters.topic === 'other' ? null : filters.topic)}</Text>
-            <Icon name="close" size={14} color={colors.primary.DEFAULT} />
-          </Pressable>
-          {/* その他 is where words without a topic wait: let the AI sort them. */}
-          {filters.topic === 'other' && words !== null && words.length > 0 ? (
+      <WordFilters
+        filters={filters}
+        onChange={update}
+        showStatus
+        topicExtra={
+          // その他 is where words without a topic wait: let the AI sort them.
+          filters.topic === 'other' && words !== null && words.length > 0 ? (
             <Pressable
               accessibilityRole="button"
               disabled={sorting}
@@ -222,9 +164,10 @@ export default function LibraryScreen() {
               <Icon name="auto-awesome" size={14} color={colors.primary.DEFAULT} />
               <Text className="font-display-semibold text-[12px] text-ink">{sorting ? t('ai.sorting') : t('ai.sortOther')}</Text>
             </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+          ) : null
+        }
+      />
+
 
       {words !== null && words.length > 0 ? (
         <View className="flex-row items-center justify-between px-1">
