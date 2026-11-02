@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { isGrammarFunction, isWordCategory, LEGACY_TOPICS } from '@/lib/categories';
 import { guessVerbGroup } from '@/lib/verb';
 
 /**
@@ -148,6 +149,7 @@ async function serialize(db: SQLiteDatabase, kind: SyncKind, uid: string): Promi
         jlpt: g.jlpt,
         formation: g.formation,
         explanation: g.explanation,
+        category: g.category,
         starredAt: g.starred_at,
         createdAt: g.created_at,
       };
@@ -224,7 +226,7 @@ async function upsertLocal(db: SQLiteDatabase, kind: SyncKind, uid: string, d: D
         // From an older app version, verbs arrive without a group: work it out here.
         d.pos === 'verb' ? (d.verbGroup ?? guessVerbGroup(d.word, d.reading)) : null,
         d.jlpt ?? null,
-        d.topic ?? null, JSON.stringify(d.tags ?? []), d.notes ?? '', d.zhLinkKind ?? null, d.zhNoteEn ?? null,
+        toCategory(d.topic), JSON.stringify(d.tags ?? []), d.notes ?? '', d.zhLinkKind ?? null, d.zhNoteEn ?? null,
         d.zhNoteZh ?? null, d.savedAt ?? null, d.starredAt ?? null,
       ];
       const id = await idFor(db, 'word', uid);
@@ -273,17 +275,18 @@ async function upsertLocal(db: SQLiteDatabase, kind: SyncKind, uid: string, d: D
     case 'grammar': {
       const values = [
         d.pattern, d.meaningEn ?? '', d.meaningZh ?? '', d.jlpt ?? null, d.formation ?? '', d.explanation ?? '', d.starredAt ?? null,
+        isGrammarFunction(d.category) ? d.category : null,
       ];
       const id = await idFor(db, 'grammar', uid);
       if (id !== null) {
         await db.runAsync(
-          'UPDATE grammar SET pattern = ?, meaning_en = ?, meaning_zh = ?, jlpt = ?, formation = ?, explanation = ?, starred_at = ? WHERE id = ?',
+          'UPDATE grammar SET pattern = ?, meaning_en = ?, meaning_zh = ?, jlpt = ?, formation = ?, explanation = ?, starred_at = ?, category = ? WHERE id = ?',
           ...values, id,
         );
       } else {
         await db.runAsync(
-          `INSERT INTO grammar (pattern, meaning_en, meaning_zh, jlpt, formation, explanation, starred_at, uid, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
+          `INSERT INTO grammar (pattern, meaning_en, meaning_zh, jlpt, formation, explanation, starred_at, category, uid, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`,
           ...values, uid, d.createdAt ?? null,
         );
       }
@@ -348,6 +351,12 @@ export async function clearPersonalData(db: SQLiteDatabase) {
       DELETE FROM sync_state;
     `);
   });
+}
+
+/** A word's category from synced data; older app versions sent the previous topic names. */
+function toCategory(topic: unknown): string | null {
+  if (isWordCategory(topic)) return topic;
+  return typeof topic === 'string' ? (LEGACY_TOPICS[topic] ?? null) : null;
 }
 
 /** JSON with keys sorted, so the same data always gives the same text (the server reorders keys). */

@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import type { JlptLevel, LibraryFilters, PartOfSpeech, ReviewFilter } from '@/db/types';
+import { WORD_CATEGORIES } from '@/lib/categories';
 import { VERB_GROUPS } from '@/lib/verb';
-import { useSync } from '@/state/sync';
-import colors from '@/theme/colors';
 
-import { Chip, Icon } from './ui';
+import { Chip } from './ui';
 
 const STATUSES: ReviewFilter[] = ['all', 'starred'];
 const POS: PartOfSpeech[] = ['noun', 'verb', 'i-adj', 'na-adj', 'adverb', 'expression'];
@@ -15,7 +14,7 @@ const JLPT: JlptLevel[] = [5, 4, 3, 2, 1];
 
 /**
  * The filter tags for word lists (単語帳 and 復習 → 単語): level, part of speech, verb group
- * when 動詞 is picked, and the topic you tapped on a card (shown so it can be cleared).
+ * when 動詞 is picked, and category (what it's about).
  */
 export function WordFilters({
   filters,
@@ -31,7 +30,6 @@ export function WordFilters({
   topicExtra?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const { topicLabel } = useSync();
 
   return (
     <>
@@ -82,22 +80,18 @@ export function WordFilters({
         </ScrollView>
       ) : null}
 
-      {/* Topic filters come from tapping a topic tag on a card; show it so it can be cleared. */}
-      {filters.topic !== null ? (
-        <View className="flex-row flex-wrap items-center gap-2">
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onChange({ topic: null })}
-            className="flex-row items-center gap-1.5 self-start rounded-full bg-primary-soft px-3 py-1.5">
-            <Icon name="filter-alt" size={14} color={colors.primary.DEFAULT} />
-            <Text className="font-display-semibold text-[12px] text-primary">
-              {topicLabel(filters.topic === 'other' ? null : filters.topic)}
-            </Text>
-            <Icon name="close" size={14} color={colors.primary.DEFAULT} />
-          </Pressable>
-          {topicExtra}
-        </View>
-      ) : null}
+      {/* What it's about: the fixed categories, then その他 */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
+        {[...WORD_CATEGORIES, 'other' as const].map((category) => (
+          <Chip
+            key={category}
+            label={t(`category.${category}`)}
+            selected={filters.topic === category}
+            onPress={() => onChange({ topic: filters.topic === category ? null : category })}
+          />
+        ))}
+      </ScrollView>
+      {filters.topic !== null && topicExtra ? <View className="flex-row flex-wrap items-center gap-2">{topicExtra}</View> : null}
     </>
   );
 }

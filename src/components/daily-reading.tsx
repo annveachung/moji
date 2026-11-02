@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 
 import { findDuplicate, insertWord, setWordSaved } from '@/db/queries';
-import { fillWord, getDailyReading, resolveTopic, toWordInput, type ReadingItem } from '@/lib/ai';
+import { fillWord, getDailyReading, toWordInput, type ReadingItem } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { stripFurigana } from '@/lib/furigana';
 import { speakJapanese } from '@/lib/speech';
@@ -128,7 +128,6 @@ function ReadingPiece({ item, onClose }: { item: ReadingItem; onClose: () => voi
 function VocabRow({ vocab, meaning }: { vocab: ReadingItem['vocab'][number]; meaning: string }) {
   const db = useSQLiteContext();
   const { t } = useTranslation();
-  const { topicsForAi } = useSync();
   const [state, setState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -144,8 +143,7 @@ function VocabRow({ vocab, meaning }: { vocab: ReadingItem['vocab'][number]; mea
       if (existing) {
         await setWordSaved(db, existing.id, true);
       } else {
-        const filled = await fillWord(vocab.word, topicsForAi());
-        await insertWord(db, toWordInput(filled, await resolveTopic(db, filled.topic)));
+        await insertWord(db, toWordInput(await fillWord(vocab.word)));
       }
       setState('saved');
     } catch (e) {

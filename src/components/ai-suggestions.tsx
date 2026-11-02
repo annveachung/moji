@@ -13,7 +13,7 @@ import {
   setSetting,
   setWordSaved,
 } from '@/db/queries';
-import { fillWord, resolveTopic, suggestWords, toWordInput, type SuggestedWord, type SuggestionKind } from '@/lib/ai';
+import { fillWord, suggestWords, toWordInput, type SuggestedWord, type SuggestionKind } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { showAlert } from '@/lib/alert';
 import { useLayout } from '@/lib/layout';
@@ -118,7 +118,6 @@ function AiWordCard({ word, saved, onSaved }: { word: SuggestedWord; saved: bool
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const { settings } = useSettings();
-  const { topicsForAi } = useSync();
   const [saving, setSaving] = useState(false);
   const kanaOnly = word.reading === word.word;
 
@@ -130,8 +129,7 @@ function AiWordCard({ word, saved, onSaved }: { word: SuggestedWord; saved: bool
         // Already in moji (a starter word, or saved before): just put it in your library.
         if (!existing.savedAt) await setWordSaved(db, existing.id, true);
       } else {
-        const filled = await fillWord(word.word, topicsForAi());
-        await insertWord(db, toWordInput(filled, await resolveTopic(db, filled.topic)));
+        await insertWord(db, toWordInput(await fillWord(word.word)));
       }
       onSaved();
     } catch (error) {

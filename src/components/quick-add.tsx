@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-nativ
 import { findDuplicate, getWord, insertWord, setWordSaved, setWordTopic } from '@/db/queries';
 import type { Word } from '@/db/types';
 import { showAlert } from '@/lib/alert';
-import { fillWord, resolveTopic, toWordInput } from '@/lib/ai';
+import { categoryOf, fillWord, toWordInput } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { meaningFor } from '@/lib/meaning';
 import { posLabel } from '@/lib/verb';
@@ -28,7 +28,7 @@ export function QuickAdd({ onAdded }: { onAdded: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { settings } = useSettings();
-  const { topicsForAi, topicLabel } = useSync();
+  const { topicLabel } = useSync();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [added, setAdded] = useState<Word | null>(null);
@@ -44,10 +44,10 @@ export function QuickAdd({ onAdded }: { onAdded: () => void }) {
     if (!typed || busy) return;
     setBusy(true);
     try {
-      const filled = await fillWord(typed, topicsForAi());
+      const filled = await fillWord(typed);
       const duplicate = await findDuplicate(db, filled.word, filled.reading);
-      const topic = await resolveTopic(db, filled.topic);
-      const add = async () => finish(await insertWord(db, toWordInput(filled, topic)));
+      const topic = categoryOf(filled);
+      const add = async () => finish(await insertWord(db, toWordInput(filled)));
 
       if (duplicate?.savedAt) {
         // Already saved: say so, and only add a second copy if you really want one.

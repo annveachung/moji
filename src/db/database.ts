@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { Platform } from 'react-native';
 
+import { LEGACY_TOPICS, WORD_CATEGORIES } from '@/lib/categories';
 import { guessVerbGroup } from '@/lib/verb';
 
 import { SEED_RELATIONS, SEED_WORDS } from './seed-data';
@@ -11,7 +12,7 @@ export const DATABASE_NAME = 'moji.db';
  * Bump this and add a `if (version < N)` block below whenever the schema changes.
  * SQLite remembers the version in `PRAGMA user_version`, so each migration runs once.
  */
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -217,6 +218,23 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
           );
         }
       }
+    }
+    if (version < 6) {
+      // Topics become fixed categories (lib/categories.ts). The old built-in topics map across;
+      // topics the AI made up earlier go to その他 for the AI to sort again. Grammar gets a
+      // category too (what the pattern does: 条件, 理由…).
+      await tx.execAsync('ALTER TABLE grammar ADD COLUMN category TEXT;');
+      for (const [legacy, category] of Object.entries(LEGACY_TOPICS)) {
+        await tx.runAsync('UPDATE words SET topic = ? WHERE topic = ?', category, legacy);
+      }
+      const known = WORD_CATEGORIES.map((c) => `'${c}'`).join(', ');
+      await tx.execAsync(`UPDATE words SET topic = NULL WHERE topic IS NOT NULL AND topic NOT IN (${known});`);
+      // Your words changed: upload them again.
+      await tx.execAsync(`
+        INSERT INTO outbox (kind, uid) SELECT 'word', uid FROM words
+          WHERE saved_at IS NOT NULL OR is_custom = 1
+        ON CONFLICT (kind, uid) DO UPDATE SET version = version + 1;
+      `);
     }
     await tx.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });

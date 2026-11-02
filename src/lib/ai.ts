@@ -1,22 +1,12 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
-
-import { addTopic } from '@/db/queries';
 import type { ChineseLinkKind, JlptLevel, PartOfSpeech, Topic, VerbGroup, WordInput } from '@/db/types';
 
 import { apiFetch } from './api';
+import { isGrammarFunction, isWordCategory, type GrammarFunction } from './categories';
 
 /**
  * moji's AI features, all answered by moji-api (which talks to Gemini). The AI key
  * never leaves the server; the app only sends the word or rule it needs help with.
  */
-
-export type TopicChoice = {
-  choice: 'existing' | 'new' | 'other';
-  id: string;
-  labelJa: string;
-  labelEn: string;
-  labelZh: string;
-};
 
 export type FilledWord = {
   word: string;
@@ -31,30 +21,22 @@ export type FilledWord = {
   zhLinkKind: ChineseLinkKind | 'none';
   zhNoteEn: string;
   zhNoteZh: string;
-  topic: TopicChoice;
+  /** One of the fixed categories (lib/categories.ts), or "other". */
+  category: string;
 };
 
-type TopicRef = { id: string; label: string };
-
-/** Everything about a word from just what you typed or dictated. */
-export function fillWord(text: string, topics: TopicRef[]): Promise<FilledWord> {
-  return apiFetch<FilledWord>('/ai/word', { method: 'POST', body: { text, topics } });
+/** Everything about a word, including its category, from just what you typed or dictated. */
+export function fillWord(text: string): Promise<FilledWord> {
+  return apiFetch<FilledWord>('/ai/word', { method: 'POST', body: { text } });
 }
 
-/**
- * Where the AI put a word: an existing topic, a new one (created here, and synced),
- * or null for その他.
- */
-export async function resolveTopic(db: SQLiteDatabase, topic: TopicChoice): Promise<Topic | null> {
-  if (topic.choice === 'other' || !topic.id) return null;
-  if (topic.choice === 'new') {
-    await addTopic(db, { id: topic.id, labelJa: topic.labelJa, labelEn: topic.labelEn, labelZh: topic.labelZh });
-  }
-  return topic.id;
+/** The AI's category for a word, if it's one of ours; null = その他. */
+export function categoryOf(filled: { category?: string }): Topic | null {
+  return isWordCategory(filled.category) ? filled.category : null;
 }
 
 /** Turn the AI's answer into what the add-word form saves. */
-export function toWordInput(filled: FilledWord, topic: Topic | null, starred = false): WordInput {
+export function toWordInput(filled: FilledWord, starred = false): WordInput {
   return {
     word: filled.word,
     reading: filled.reading,
@@ -67,7 +49,7 @@ export function toWordInput(filled: FilledWord, topic: Topic | null, starred = f
     notes: '',
     starred,
     example: filled.example.ja ? { ja: filled.example.ja, translation: filled.example.en, en: filled.example.en, zh: filled.example.zh } : null,
-    topic,
+    topic: categoryOf(filled),
     zhLinkKind: filled.zhLinkKind === 'none' ? null : filled.zhLinkKind,
     zhNoteEn: filled.zhNoteEn,
     zhNoteZh: filled.zhNoteZh,
@@ -86,11 +68,26 @@ export function generateGrammarSentence(rule: {
   return apiFetch<AiSentence>('/ai/grammar-sentence', { method: 'POST', body: rule });
 }
 
-export function sortTopics(
+/** Categories for words still in その他. */
+export async function sortCategories(
   words: { uid: string; word: string; reading: string; meaning: string }[],
-  topics: TopicRef[],
-): Promise<{ assignments: { uid: string; topic: TopicChoice }[] }> {
-  return apiFetch('/ai/sort-topics', { method: 'POST', body: { words, topics } });
+): Promise<{ uid: string; category: Topic | null }[]> {
+  const { assignments } = await apiFetch<{ assignments: { uid: string; category: string }[] }>('/ai/sort-categories', {
+    method: 'POST',
+    body: { words },
+  });
+  return assignments.map((a) => ({ uid: a.uid, category: categoryOf(a) }));
+}
+
+/** What each grammar rule does (条件, 理由…). */
+export async function categorizeGrammar(
+  rules: { uid: string; pattern: string; meaning: string }[],
+): Promise<{ uid: string; category: GrammarFunction | null }[]> {
+  const { assignments } = await apiFetch<{ assignments: { uid: string; category: string }[] }>('/ai/grammar-categories', {
+    method: 'POST',
+    body: { rules },
+  });
+  return assignments.map((a) => ({ uid: a.uid, category: isGrammarFunction(a.category) ? a.category : null }));
 }
 
 export type ReadingItem = {

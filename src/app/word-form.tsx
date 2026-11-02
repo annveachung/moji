@@ -10,7 +10,7 @@ import { Chip, Icon, Toggle } from '@/components/ui';
 import { findDuplicate, getWord, insertWord, setWordSaved, setWordStarred, updateWord } from '@/db/queries';
 import type { JlptLevel, PartOfSpeech, WordInput } from '@/db/types';
 import { showAlert } from '@/lib/alert';
-import { fillWord, resolveTopic, toWordInput } from '@/lib/ai';
+import { fillWord, toWordInput } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { makeFurigana } from '@/lib/furigana';
 import { guessVerbGroup, VERB_GROUPS } from '@/lib/verb';
@@ -49,7 +49,6 @@ export default function WordFormScreen() {
   const layout = useLayout();
   const [form, setForm] = useState<WordInput>(typedWord ? { ...EMPTY, word: typedWord } : EMPTY);
   const [filling, setFilling] = useState(false);
-  const { topicsForAi } = useSync();
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -88,9 +87,7 @@ export default function WordFormScreen() {
     }
     setFilling(true);
     try {
-      const filled = await fillWord(typed, topicsForAi());
-      const topic = await resolveTopic(db, filled.topic);
-      const input = toWordInput(filled, topic, form.starred);
+      const input = toWordInput(await fillWord(typed), form.starred);
       setForm({
         ...input,
         notes: form.notes,

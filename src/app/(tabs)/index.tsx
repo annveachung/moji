@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 
@@ -44,7 +44,14 @@ export default function LibraryScreen() {
   const { settings } = useSettings();
   const [importing, setImporting] = useState<{ plan: ImportPlan; problems: CsvProblem[] } | null>(null);
   const { dataVersion, topicLabel } = useSync();
-  const { sorting, sort } = useSortOther(() => load());
+  const { sorting, sort, sortOnce } = useSortOther(() => load());
+
+  // After the move to fixed categories, words whose old topic didn't carry over get sorted once.
+  useEffect(() => {
+    sortOnce();
+    // Only on opening the tab; sortOnce remembers when it's done.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const layout = useLayout();
   // Cards per row: list view 1 → 3 as the window widens; the compact grid view one more.
   const columns = view === 'grid' ? layout.columns + 1 : layout.columns;
