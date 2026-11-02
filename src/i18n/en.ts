@@ -267,8 +267,8 @@ const en = {
     doneBody: 'Added {{added}}, updated {{merged}}, skipped {{skipped}}.',
   },
   ai: {
-    quickAddPlaceholder: 'Type or dictate a word…',
-    quickAddHint: 'AI fills in the reading, meanings, an example and a topic.',
+    quickAddPlaceholder: 'Add a word…',
+    quickAddHint: 'Type or 🎤 dictate. AI fills in the reading, meanings, an example and a topic.',
     adding: 'Looking it up…',
     added: 'Added to your notebook',
     open: 'Details',

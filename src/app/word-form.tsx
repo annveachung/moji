@@ -13,6 +13,7 @@ import { showAlert } from '@/lib/alert';
 import { fillWord, resolveTopic, toWordInput } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { makeFurigana } from '@/lib/furigana';
+import { useLayout } from '@/lib/layout';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
@@ -44,6 +45,7 @@ export default function WordFormScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const layout = useLayout();
   const [form, setForm] = useState<WordInput>(typedWord ? { ...EMPTY, word: typedWord } : EMPTY);
   const [filling, setFilling] = useState(false);
   const { topicsForAi } = useSync();
@@ -182,8 +184,8 @@ export default function WordFormScreen() {
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerClassName="w-full max-w-[720px] self-center gap-5 p-5"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
+        contentContainerClassName="gap-5 py-5"
+        contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 40 }}>
         {/* Live preview: shows the furigana that will be generated */}
         <View className="min-h-[110px] items-center justify-center gap-1 rounded-[28px] bg-card p-4 shadow-md shadow-ink/10">
           {preview ? (

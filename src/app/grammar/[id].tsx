@@ -14,6 +14,7 @@ import { generateGrammarSentence, type AiSentence } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
+import { useLayout } from '@/lib/layout';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -40,6 +41,7 @@ export default function GrammarDetailScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const layout = useLayout();
   const { settings, updateSettings } = useSettings();
   const zh = settings.meaningLanguage === 'zh-TW';
   const [rule, setRule] = useState<GrammarRule | null | undefined>(undefined);
@@ -64,7 +66,7 @@ export default function GrammarDetailScreen() {
   if (rule === null) {
     return (
       <View className="flex-1 bg-surface">
-        <AppHeader subtitle={t('grammar.title')} back />
+        <AppHeader subtitle={t('grammar.title')} back kind="reading" />
         <View className="p-4">
           <EmptyState icon="search-off" message={t('grammar.notFound')} />
         </View>
@@ -114,10 +116,10 @@ export default function GrammarDetailScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={t('grammar.title')} back />
+      <AppHeader subtitle={t('grammar.title')} back kind="reading" />
       <ScrollView
-        contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
+        contentContainerClassName="gap-4 py-4"
+        contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 32 }}>
         {/* The pattern and its meaning */}
         <View className="gap-3 rounded-[28px] bg-card p-5 shadow-md shadow-ink/10">
           <View className="flex-row items-center justify-between">

@@ -13,6 +13,7 @@ import { getRecentlyAdded, getShownSentences, getStarredShuffled, recordReview, 
 import type { Sentence, Word } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
+import { useLayout } from '@/lib/layout';
 import { useSettings } from '@/state/settings';
 import colors from '@/theme/colors';
 
@@ -25,6 +26,7 @@ export default function ReviewScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { t } = useTranslation();
+  const layout = useLayout();
   const { settings } = useSettings();
 
   const [queue, setQueue] = useState<Word[] | null>(null);
@@ -93,10 +95,11 @@ export default function ReviewScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={t('nav.review')} />
+      <AppHeader subtitle={t('nav.review')} kind="reading" />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerClassName="w-full max-w-[720px] flex-grow self-center gap-4 p-4">
+        contentContainerStyle={layout.page('reading')}
+        contentContainerClassName="flex-grow gap-4 py-4">
         <RecentlyAdded words={recent} />
         {queue === null ? null : !current ? (
           <RoundEnd
@@ -323,11 +326,17 @@ function RecentlyAdded({ words }: { words: Word[] }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { settings } = useSettings();
+  const { gutter } = useLayout();
   if (words.length === 0) return null;
   return (
     <View className="gap-2">
       <Text className="px-1 font-display-semibold text-[13px] text-ink-soft">{t('review.recentTitle')}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4" contentContainerClassName="gap-2 px-4 pb-1">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginHorizontal: -gutter }}
+        contentContainerStyle={{ paddingHorizontal: gutter }}
+        contentContainerClassName="gap-2 pb-1">
         {words.map((word) => (
           <Pressable
             key={word.id}

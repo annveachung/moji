@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { showAlert } from '@/lib/alert';
+import { useLayout } from '@/lib/layout';
 import { AppHeader } from '@/components/app-header';
 import { Icon, Toggle } from '@/components/ui';
 import type { Language, UiLanguage } from '@/db/types';
@@ -25,6 +26,7 @@ const MEANING_LANGUAGES: { value: Language; label: string }[] = [
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
+  const layout = useLayout();
   const { settings, updateSettings } = useSettings();
   const { user, signOut } = useAuth();
 
@@ -36,11 +38,12 @@ export default function SettingsScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={t('settings.title')} />
+      <AppHeader subtitle={t('settings.title')} kind="reading" />
       <ScrollView
         // Leave room for the glass tab bar, which floats over the content
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerClassName="w-full max-w-[720px] self-center gap-4 p-4 pb-10">
+        contentContainerStyle={layout.page('reading')}
+        contentContainerClassName="gap-4 pb-10 pt-4">
         {/* Your Google account, and signing out. */}
         {user ? (
           <View className="rounded-card bg-card px-4 shadow-md shadow-ink/10">

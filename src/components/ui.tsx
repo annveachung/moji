@@ -193,10 +193,10 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
  * Lays children out in rows of two equal columns. (A wrapping flex row with
  * flex-1 children doesn't reliably wrap in React Native, so we build the rows.)
  */
-export function TwoColumnGrid({ children, gap = 12 }: { children: ReactNode; gap?: number }) {
+export function TwoColumnGrid({ children, gap = 12, columns = 2 }: { children: ReactNode; gap?: number; columns?: number }) {
   const items = Children.toArray(children);
   const rows: ReactNode[][] = [];
-  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  for (let i = 0; i < items.length; i += columns) rows.push(items.slice(i, i + columns));
   return (
     <View style={{ gap }}>
       {rows.map((row, i) => (
@@ -206,8 +206,10 @@ export function TwoColumnGrid({ children, gap = 12 }: { children: ReactNode; gap
               {item}
             </View>
           ))}
-          {/* Keep a lone last card at half width. */}
-          {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+          {/* Keep the cards in a short last row the same width as the rows above. */}
+          {Array.from({ length: columns - row.length }, (_, k) => (
+            <View key={`empty-${k}`} style={{ flex: 1 }} />
+          ))}
         </View>
       ))}
     </View>
