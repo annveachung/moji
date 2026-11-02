@@ -106,3 +106,24 @@ export type ReadingItem = {
 export function getDailyReading(): Promise<{ day: string; items: ReadingItem[] }> {
   return apiFetch('/reading/today');
 }
+
+/** A word the AI suggests for ことば, with why it's suggested. */
+export type SuggestedWord = {
+  word: string;
+  reading: string;
+  meaningEn: string;
+  meaningZh: string;
+  /** 0 = not on the JLPT lists. */
+  jlpt: number;
+  reason: string;
+};
+
+export type SuggestionKind = 'forYou' | 'kanji';
+
+export function suggestWords(
+  kind: SuggestionKind,
+  library: { word: string; meaning: string; jlpt: number | null }[],
+  exclude: string[],
+): Promise<{ words: SuggestedWord[] }> {
+  return apiFetch('/ai/suggest', { method: 'POST', body: { kind, library, exclude } });
+}
