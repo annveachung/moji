@@ -2,16 +2,20 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton } from '@/components/ui';
-import { deleteGrammarSentence, getGrammarRule, getGrammarSentences } from '@/db/grammar';
+import { deleteGrammarSentence, getGrammarRule, getGrammarSentences, saveGrammarSentence } from '@/db/grammar';
 import type { GrammarRule, GrammarSentence } from '@/db/types';
+import { showAlert } from '@/lib/alert';
+import { generateGrammarSentence, type AiSentence } from '@/lib/ai';
+import { aiErrorMessage } from '@/lib/ai-errors';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 /**
@@ -41,10 +45,14 @@ export default function GrammarDetailScreen() {
   const [rule, setRule] = useState<GrammarRule | null | undefined>(undefined);
   const [sentences, setSentences] = useState<GrammarSentence[]>([]);
 
+  const { dataVersion } = useSync();
+  const [draft, setDraft] = useState<AiSentence | null>(null);
+  const [generating, setGenerating] = useState(false);
+
   const load = useCallback(async () => {
     setRule(await getGrammarRule(db, ruleId));
     setSentences(await getGrammarSentences(db, ruleId));
-  }, [db, ruleId]);
+  }, [db, ruleId, dataVersion]);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,8 +72,35 @@ export default function GrammarDetailScreen() {
     );
   }
 
+  /** A new AI example, different from the ones already saved. You decide whether to keep it. */
+  const generate = async () => {
+    setGenerating(true);
+    try {
+      setDraft(
+        await generateGrammarSentence({
+          pattern: rule.pattern,
+          meaning: rule.meaningEn || rule.meaningZh,
+          formation: rule.formation,
+          jlpt: rule.jlpt,
+          avoid: [...sentences.map((s) => s.ja), ...(draft ? [draft.ja] : [])],
+        }),
+      );
+    } catch (error) {
+      showAlert(t('grammar.generate'), aiErrorMessage(t, error));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const saveDraft = async () => {
+    if (!draft) return;
+    await saveGrammarSentence(db, rule.id, draft, 'ai');
+    setDraft(null);
+    load();
+  };
+
   const confirmDelete = (sentence: GrammarSentence) =>
-    Alert.alert(t('grammar.deleteSentence'), sentence.ja, [
+    showAlert(t('grammar.deleteSentence'), sentence.ja, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -145,12 +180,40 @@ export default function GrammarDetailScreen() {
             </View>
           ))}
 
-          {/* Generate (needs the AI server) */}
-          <StampButton label={t('grammar.generate')} icon="auto-awesome" tone="quiet" disabled onPress={() => {}} />
-          <View className="flex-row items-start gap-2 px-1">
-            <Icon name="info-outline" size={14} color={colors.ink.muted} />
-            <Text className="flex-1 text-[12px] leading-4 text-ink-muted">{t('grammar.generateSoon')}</Text>
-          </View>
+          {/* A sentence the AI just wrote: keep it or ask for another */}
+          {draft ? (
+            <View className="gap-2 rounded-2xl border border-primary/30 bg-primary-soft/40 p-3">
+              <Pill label={t('grammarAi.new')} icon="auto-awesome" tone="primary" />
+              <Text className="text-[17px] leading-7 text-ink">
+                {highlight(draft.ja, rule.pattern).map((part, i) => (
+                  <Text key={i} className={part.match ? 'font-bold text-primary' : undefined}>
+                    {part.text}
+                  </Text>
+                ))}
+              </Text>
+              <Text className="text-[13px] leading-5 text-ink-soft">{zh ? draft.zh : draft.en}</Text>
+              <View className="flex-row items-center gap-2">
+                <IconButton icon="volume-up" size={32} label={t('word.listen')} onPress={() => speakJapanese(draft.ja)} />
+                <View className="flex-1" />
+                <Pressable accessibilityRole="button" disabled={generating} onPress={generate} className="rounded-full bg-card px-4 py-2 active:opacity-80">
+                  <Text className="font-display-semibold text-[13px] text-ink">{t('grammarAi.another')}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={saveDraft} className="flex-row items-center gap-1 rounded-full bg-primary px-4 py-2 active:opacity-80">
+                  <Icon name="bookmark-add" size={16} color="#FFFFFF" />
+                  <Text className="font-display-semibold text-[13px] text-white">{t('grammarAi.save')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          {generating ? (
+            <View className="flex-row items-center justify-center gap-2 py-3">
+              <ActivityIndicator color={colors.primary.DEFAULT} />
+              <Text className="text-[13px] text-ink-soft">{t('grammarAi.generating')}</Text>
+            </View>
+          ) : draft ? null : (
+            <StampButton label={t('grammar.generate')} icon="auto-awesome" tone="quiet" onPress={generate} />
+          )}
         </Card>
       </ScrollView>
     </View>

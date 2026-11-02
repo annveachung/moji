@@ -1,7 +1,7 @@
-import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { apiFetch, ApiError, setSessionExpiredHandler, type AuthResponse } from '@/lib/api';
+import { getGoogleIdToken, googleSignOut } from '@/lib/google';
 import { tokenStore, type ApiUser } from '@/lib/token-store';
 
 /**
@@ -16,17 +16,14 @@ export type SignInResult = 'signedIn' | 'cancelled';
 type AuthContextValue = {
   status: AuthStatus;
   user: ApiUser | null;
+  /** iPhone: opens Google's sign-in sheet. */
   signIn: () => Promise<SignInResult>;
+  /** Web: Google's button already gave us the ID token. */
+  signInWithIdToken: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-GoogleSignin.configure({
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
-  // With a web client id, Google's ID token is issued for it: that's what mojiApi checks.
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
-});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -62,34 +59,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setSessionExpiredHandler(null);
   }, [markSignedOut]);
 
-  const signIn = useCallback(async (): Promise<SignInResult> => {
-    let idToken: string | null;
-    try {
-      const response = await GoogleSignin.signIn();
-      if (response.type !== 'success') return 'cancelled';
-      idToken = response.data.idToken;
-    } catch (error) {
-      if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED) return 'cancelled';
-      throw error;
-    }
-    if (!idToken) throw new ApiError(400, 'no_id_token', 'Google did not return an ID token.');
-
+  /** Swap Google's ID token for moji's own session. */
+  const signInWithIdToken = useCallback(async (idToken: string) => {
     const session = await apiFetch<AuthResponse>('/auth/google', { method: 'POST', body: { idToken }, auth: false });
     await tokenStore.save(session);
     setUser(session.user);
     setStatus('signedIn');
-    return 'signedIn';
   }, []);
+
+  const signIn = useCallback(async (): Promise<SignInResult> => {
+    const idToken = await getGoogleIdToken();
+    if (!idToken) return 'cancelled';
+    await signInWithIdToken(idToken);
+    return 'signedIn';
+  }, [signInWithIdToken]);
 
   const signOut = useCallback(async () => {
     // Best effort: end the session on the server, but sign out locally no matter what.
     await apiFetch('/auth/logout', { method: 'POST' }).catch(() => undefined);
-    await GoogleSignin.signOut().catch(() => undefined);
+    await googleSignOut();
     await tokenStore.clear();
     markSignedOut();
   }, [markSignedOut]);
 
-  const value = useMemo(() => ({ status, user, signIn, signOut }), [status, user, signIn, signOut]);
+  const value = useMemo(
+    () => ({ status, user, signIn, signInWithIdToken, signOut }),
+    [status, user, signIn, signInWithIdToken, signOut],
+  );
   return <AuthContext value={value}>{children}</AuthContext>;
 }
 

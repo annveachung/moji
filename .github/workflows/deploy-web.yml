@@ -1,0 +1,52 @@
+# Builds the web version of moji and publishes it to https://moji.annvea.com on every push to main.
+name: Deploy web app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: web-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # EXPO_PUBLIC_* values come from the committed .env (public settings only).
+      - name: Build the web app
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Pack
+        run: tar -czf moji-web.tgz -C dist .
+
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Upload and switch
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          RELEASE="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          scp moji-web.tgz deploy/release-web.sh "mojiapi@$DEPLOY_HOST:incoming/"
+          ssh "mojiapi@$DEPLOY_HOST" "bash incoming/release-web.sh incoming/moji-web.tgz $RELEASE"
+
+      - name: Check the live site
+        run: curl -fsS -o /dev/null https://moji.annvea.com/

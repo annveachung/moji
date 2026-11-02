@@ -2,14 +2,18 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FuriganaText } from '@/components/furigana-text';
-import { Chip, Icon, Pill, Toggle } from '@/components/ui';
+import { Chip, Icon, Toggle } from '@/components/ui';
 import { findDuplicate, getWord, insertWord, setWordSaved, setWordStarred, updateWord } from '@/db/queries';
 import type { JlptLevel, PartOfSpeech, WordInput } from '@/db/types';
+import { showAlert } from '@/lib/alert';
+import { fillWord, resolveTopic, toWordInput } from '@/lib/ai';
+import { aiErrorMessage } from '@/lib/ai-errors';
 import { makeFurigana } from '@/lib/furigana';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 const POS: PartOfSpeech[] = ['noun', 'verb', 'i-adj', 'na-adj', 'adverb', 'expression'];
@@ -33,13 +37,16 @@ type FieldError = 'word' | 'reading' | 'meaning';
 
 /** Add a word you met outside, or edit one. Opens as a sheet from the bottom. */
 export default function WordFormScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  // word: typed in the quick-add bar when the AI wasn't available.
+  const { id, word: typedWord } = useLocalSearchParams<{ id?: string; word?: string }>();
   const editingId = id ? Number(id) : null;
   const db = useSQLiteContext();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const [form, setForm] = useState<WordInput>(EMPTY);
+  const [form, setForm] = useState<WordInput>(typedWord ? { ...EMPTY, word: typedWord } : EMPTY);
+  const [filling, setFilling] = useState(false);
+  const { topicsForAi } = useSync();
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -65,6 +72,32 @@ export default function WordFormScreen() {
   const update = (patch: Partial<WordInput>) => {
     setForm((current) => ({ ...current, ...patch }));
     setErrors([]);
+  };
+
+  /** Ask the AI for everything except your notes and the ⭐. */
+  const fillWithAi = async () => {
+    const typed = form.word.trim();
+    if (!typed) {
+      setErrors(['word']);
+      showAlert(t('ai.fill'), t('ai.fillNeedsWord'));
+      return;
+    }
+    setFilling(true);
+    try {
+      const filled = await fillWord(typed, topicsForAi());
+      const topic = await resolveTopic(db, filled.topic);
+      const input = toWordInput(filled, topic, form.starred);
+      setForm({
+        ...input,
+        notes: form.notes,
+        example: input.example ?? { ja: '', translation: '' },
+      });
+      setErrors([]);
+    } catch (error) {
+      showAlert(t('ai.fill'), aiErrorMessage(t, error));
+    } finally {
+      setFilling(false);
+    }
   };
 
   const save = async () => {
@@ -100,13 +133,13 @@ export default function WordFormScreen() {
     const duplicate = await findDuplicate(db, input.word, input.reading);
     const names = { word: input.word, reading: input.reading };
     if (duplicate?.savedAt) {
-      Alert.alert(t('form.duplicateTitle'), t('form.duplicateBody', names), [
+      showAlert(t('form.duplicateTitle'), t('form.duplicateBody', names), [
         { text: t('form.skip'), style: 'cancel', onPress: () => router.back() },
         { text: t('form.addAnyway'), onPress: add },
       ]);
     } else if (duplicate) {
       // It's one of the Explore words: save that one instead of making a copy.
-      Alert.alert(t('form.catalogTitle'), t('form.catalogBody', names), [
+      showAlert(t('form.catalogTitle'), t('form.catalogBody', names), [
         {
           text: t('form.useCatalog'),
           onPress: async () => {
@@ -169,6 +202,15 @@ export default function WordFormScreen() {
             placeholder={t('form.wordPlaceholder')}
             large
           />
+          {/* Only the word is needed: the AI fills in everything below. */}
+          <Pressable
+            accessibilityRole="button"
+            disabled={filling}
+            onPress={fillWithAi}
+            className="flex-row items-center justify-center gap-2 self-start rounded-full bg-primary-soft px-4 py-2 active:opacity-80">
+            {filling ? <ActivityIndicator size="small" color={colors.primary.DEFAULT} /> : <Icon name="auto-awesome" size={16} color={colors.primary.DEFAULT} />}
+            <Text className="font-display-semibold text-[13px] text-primary">{filling ? t('ai.filling') : t('ai.fill')}</Text>
+          </Pressable>
         </Field>
 
         <Field label={t('form.reading')} error={errors.includes('reading') ? t('form.errors.reading') : undefined}>
@@ -230,10 +272,7 @@ export default function WordFormScreen() {
           <Toggle value={form.starred} label={t('form.star')} onChange={(starred) => update({ starred })} />
         </View>
 
-        <View className="flex-row items-center justify-center gap-1.5">
-          <Icon name="auto-awesome" size={14} color={colors.ink.muted} />
-          <Pill label={t('form.aiSoon')} tone="outline" />
-        </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -1,15 +1,13 @@
-import * as DocumentPicker from 'expo-document-picker';
-import { File, Paths } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { AppHeader } from '@/components/app-header';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
+import { QuickAdd } from '@/components/quick-add';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
 import { Chip, EmptyState, Icon, IconButton, Pill, type IconName, type PillTone } from '@/components/ui';
 import {
@@ -29,10 +27,14 @@ import type {
   PartOfSpeech,
   ReviewFilter,
 } from '@/db/types';
+import { showAlert } from '@/lib/alert';
 import { toLocalDay } from '@/lib/date';
+import { pickCsvText, shareCsv } from '@/lib/file-io';
 import { meaningFor } from '@/lib/meaning';
+import { useSortOther } from '@/lib/use-sort-other';
 import { csvToWords, wordsToCsv, type CsvProblem } from '@/lib/word-csv';
 import { useSettings } from '@/state/settings';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 const STATUSES: ReviewFilter[] = ['all', 'starred'];
@@ -53,11 +55,14 @@ export default function LibraryScreen() {
   const [view, setView] = useState<ViewMode>('list');
   const { settings } = useSettings();
   const [importing, setImporting] = useState<{ plan: ImportPlan; problems: CsvProblem[] } | null>(null);
+  const { dataVersion, topicLabel } = useSync();
+  const { sorting, sort } = useSortOther(() => load());
 
   const load = useCallback(() => {
     getLibrary(db, filters).then(setWords);
     getLibraryStats(db).then(setStats);
-  }, [db, filters]);
+    // dataVersion: reload when changes arrive from your other devices.
+  }, [db, filters, dataVersion]);
 
   // Reload when the screen comes back into view (e.g. after adding a word) or filters change.
   useFocusEffect(load);
@@ -74,32 +79,21 @@ export default function LibraryScreen() {
   const exportCsv = async () => {
     const all = await getAllLibraryWords(db);
     if (all.length === 0) {
-      Alert.alert(t('library.exportCsv'), t('library.exportEmpty'));
+      showAlert(t('library.exportCsv'), t('library.exportEmpty'));
       return;
     }
-    const file = new File(Paths.cache, `moji-${toLocalDay(new Date())}.csv`);
-    if (file.exists) file.delete();
-    file.create();
-    await file.write(wordsToCsv(all));
-    await Sharing.shareAsync(file.uri, {
-      mimeType: 'text/csv',
-      UTI: 'public.comma-separated-values-text',
-      dialogTitle: t('library.exportCsv'),
-    });
+    await shareCsv(`moji-${toLocalDay(new Date())}.csv`, wordsToCsv(all), t('library.exportCsv'));
   };
 
   /** Pick a CSV, read it, and open the review sheet. Nothing is saved until you confirm. */
   const importCsv = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({
-      type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'public.comma-separated-values-text'],
-      copyToCacheDirectory: true,
-    });
-    if (picked.canceled) return;
     try {
-      const { words: rows, problems } = csvToWords(await new File(picked.assets[0].uri).text());
+      const text = await pickCsvText();
+      if (text === null) return;
+      const { words: rows, problems } = csvToWords(text);
       setImporting({ plan: await planImport(db, rows), problems });
     } catch {
-      Alert.alert(t('importing.title'), t('importing.error'));
+      showAlert(t('importing.title'), t('importing.error'));
     }
   };
 
@@ -108,7 +102,7 @@ export default function LibraryScreen() {
     const result = await applyImport(db, importing.plan, mergeIds);
     setImporting(null);
     load();
-    Alert.alert(t('importing.doneTitle'), t('importing.doneBody', result));
+    showAlert(t('importing.doneTitle'), t('importing.doneBody', result));
   };
 
   /** Describe a word import for the review sheet. */
@@ -147,20 +141,8 @@ export default function LibraryScreen() {
 
   const header = (
     <View className="gap-3 pb-1 pt-3">
-      {/* Quick add: the main way in. Later, AI fills in the details from just the word. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('library.quickAdd')}
-        onPress={() => router.push('/word-form')}
-        className="flex-row items-center gap-3 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
-        <View className="h-11 w-11 items-center justify-center rounded-full bg-primary">
-          <Icon name="add" size={26} color="#FFFFFF" />
-        </View>
-        <View className="flex-1">
-          <Text className="font-display text-[16px] text-ink">{t('library.quickAdd')}</Text>
-          <Text className="text-[12px] leading-4 text-ink-soft">{t('library.quickAddHint')}</Text>
-        </View>
-      </Pressable>
+      {/* Quick add: type or dictate just the word; the AI fills in the rest. */}
+      <QuickAdd onAdded={load} />
 
       {stats !== null && stats.total > 0 ? (
         <StatsCard
@@ -217,14 +199,27 @@ export default function LibraryScreen() {
 
       {/* Topic filters come from tapping a topic tag on a card; show it so it can be cleared. */}
       {filters.topic !== null ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => update({ topic: null })}
-          className="flex-row items-center gap-1.5 self-start rounded-full bg-primary-soft px-3 py-1.5">
-          <Icon name="filter-alt" size={14} color={colors.primary.DEFAULT} />
-          <Text className="font-display-semibold text-[12px] text-primary">{t(`topic.${filters.topic}`)}</Text>
-          <Icon name="close" size={14} color={colors.primary.DEFAULT} />
-        </Pressable>
+        <View className="flex-row flex-wrap items-center gap-2">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => update({ topic: null })}
+            className="flex-row items-center gap-1.5 self-start rounded-full bg-primary-soft px-3 py-1.5">
+            <Icon name="filter-alt" size={14} color={colors.primary.DEFAULT} />
+            <Text className="font-display-semibold text-[12px] text-primary">{topicLabel(filters.topic === 'other' ? null : filters.topic)}</Text>
+            <Icon name="close" size={14} color={colors.primary.DEFAULT} />
+          </Pressable>
+          {/* その他 is where words without a topic wait: let the AI sort them. */}
+          {filters.topic === 'other' && words !== null && words.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={sorting}
+              onPress={sort}
+              className={`flex-row items-center gap-1.5 rounded-full bg-card px-3 py-1.5 shadow-sm shadow-ink/10 ${sorting ? 'opacity-50' : ''}`}>
+              <Icon name="auto-awesome" size={14} color={colors.primary.DEFAULT} />
+              <Text className="font-display-semibold text-[12px] text-ink">{sorting ? t('ai.sorting') : t('ai.sortOther')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
 
       {words !== null && words.length > 0 ? (

@@ -1,4 +1,4 @@
-import type { JlptLevel, PartOfSpeech, Topic, Word } from '@/db/types';
+import { BUILT_IN_TOPICS, type JlptLevel, type PartOfSpeech, type Topic, type Word } from '@/db/types';
 import en from '@/i18n/en';
 import ja from '@/i18n/ja';
 import zhTW from '@/i18n/zh-TW';
@@ -38,7 +38,6 @@ export type CsvWord = {
 export type CsvProblem = { line: number; reason: 'missing-word' | 'bad-reading' | 'missing-meaning' };
 
 const POS_CODES: PartOfSpeech[] = ['noun', 'verb', 'i-adj', 'na-adj', 'adverb', 'expression'];
-const TOPICS: Topic[] = ['daily-life', 'travel', 'relationships', 'work-tech', 'anime-games'];
 const KANA_ONLY = /^[぀-ゟ゠-ヿー・\s]+$/;
 
 /** Accept a part of speech as its code ("noun") or its label in any app language ("名詞", "Noun"). */
@@ -59,9 +58,14 @@ function parseJlpt(value: string): JlptLevel | null {
 
 /** A topic code ("travel") or its label in any app language ("旅行"). Anything else → none. */
 function parseTopic(value: string): Topic | null {
+  // Topics the AI made are kept by their id (e.g. "food"); built-in ones also match their labels.
   const v = value.trim().toLowerCase();
   if (!v) return null;
-  return TOPICS.find((code) => [code, en.topic[code], ja.topic[code], zhTW.topic[code]].map((l) => l.toLowerCase()).includes(v)) ?? null;
+  const builtIn = BUILT_IN_TOPICS.find((code) =>
+    [code, en.topic[code], ja.topic[code], zhTW.topic[code]].map((l) => l.toLowerCase()).includes(v),
+  );
+  if (builtIn) return builtIn;
+  return /^[a-z0-9-]+$/.test(v) && v !== 'other' ? v : null;
 }
 
 function parseStarred(value: string): boolean {

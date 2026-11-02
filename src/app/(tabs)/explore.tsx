@@ -11,6 +11,7 @@ import type { Suggestion, Word } from '@/db/types';
 import { KANJI_ADVANTAGE, LEVELS } from '@/lib/collections';
 import { meaningFor } from '@/lib/meaning';
 import { useSettings } from '@/state/settings';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 type Progress = { saved: number; total: number };
@@ -23,6 +24,7 @@ export default function ExploreScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { t } = useTranslation();
+  const { dataVersion, topicLabel } = useSync();
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [kanjiWords, setKanjiWords] = useState<Word[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress>>({});
@@ -35,7 +37,7 @@ export default function ExploreScreen() {
       LEVELS.map(async ({ collection }) => [collection.id, await getCollectionProgress(db, collection.filter)]),
     );
     setProgress(Object.fromEntries(entries));
-  }, [db]);
+  }, [db, dataVersion]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,7 +57,7 @@ export default function ExploreScreen() {
       case 'shared-kanji':
         return t('explore.sharesKanji', { word: s.anchor.word });
       case 'same-topic':
-        return t('explore.moreTopic', { topic: t(`topic.${s.topic}`) });
+        return t('explore.moreTopic', { topic: topicLabel(s.topic) });
       case 'confusing':
         return t('explore.confusingWith', { word: s.anchor.word });
       case 'starter':
