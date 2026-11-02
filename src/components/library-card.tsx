@@ -7,6 +7,7 @@ import { meaningFor, translationFor } from '@/lib/meaning';
 import { relativeDay } from '@/lib/relative-time';
 import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 import { FuriganaText } from './furigana-text';
@@ -53,6 +54,7 @@ export function LibraryCard({
   onFilter,
 }: Props & { filters: LibraryFilters; onFilter: (patch: Partial<LibraryFilters>) => void }) {
   const { t } = useTranslation();
+  const { topicLabel } = useSync();
   const { settings } = useSettings();
   const open = useOpen(word.id);
   const kanaOnly = word.reading === word.word;
@@ -81,7 +83,7 @@ export function LibraryCard({
           />
           {/* Words without a topic (like most you add yourself) are grouped as その他. */}
           <TagPill
-            label={t(`topic.${word.topic ?? 'other'}`)}
+            label={topicLabel(word.topic)}
             tone="outline"
             active={filters.topic === (word.topic ?? 'other')}
             onPress={() => {

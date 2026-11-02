@@ -3,10 +3,13 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { toLocalDay } from '@/lib/date';
 import { kanjiIn, makeFurigana } from '@/lib/furigana';
 
+import { markDirty, markDirtyById, markWordChildrenDeleted, NEW_UID } from './sync';
+
 import type { CsvWord } from '@/lib/word-csv';
 
 import type {
   CollectionFilter,
+  CustomTopic,
   LibraryFilters,
   LibraryStats,
   LibraryWord,
@@ -326,6 +329,7 @@ export async function setWordSaved(db: SQLiteDatabase, id: number, saved: boolea
     'UPDATE words SET saved_at = ?, starred_at = CASE WHEN ? THEN starred_at END WHERE id = ?',
     saved ? new Date().toISOString() : null, saved ? 1 : 0, id,
   );
+  await markDirtyById(db, 'word', id);
 }
 
 /** ⭐ Star a word to review it. Starring also saves it to your library. */
@@ -336,10 +340,12 @@ export async function setWordStarred(db: SQLiteDatabase, id: number, starred: bo
       WHERE id = ?`,
     starred ? now : null, starred ? 1 : 0, now, id,
   );
+  await markDirtyById(db, 'word', id);
 }
 
 export async function updateWordNotes(db: SQLiteDatabase, id: number, notes: string) {
   await db.runAsync('UPDATE words SET notes = ? WHERE id = ?', notes, id);
+  await markDirtyById(db, 'word', id);
 }
 
 /** Save a word you typed in. Returns its new id. */
@@ -356,11 +362,13 @@ async function insertWordRows(db: SQLiteDatabase, input: WordInput): Promise<num
   const now = new Date().toISOString();
   const result = await db.runAsync(
     `INSERT INTO words (word, furigana, reading, meaning_en, meaning_zh, pos, jlpt, topic, notes,
-                        is_custom, saved_at, starred_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+                        zh_link_kind, zh_note_en, zh_note_zh, is_custom, saved_at, starred_at, uid)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ${NEW_UID})`,
     input.word, makeFurigana(input.word, input.reading), input.reading, input.meaningEn,
-    input.meaningZh, input.pos, input.jlpt, input.topic ?? null, input.notes, now, input.starred ? now : null,
+    input.meaningZh, input.pos, input.jlpt, input.topic ?? null, input.notes, input.zhLinkKind ?? null,
+    input.zhNoteEn || null, input.zhNoteZh || null, now, input.starred ? now : null,
   );
+  await markDirtyById(db, 'word', result.lastInsertRowId);
   await saveExample(db, result.lastInsertRowId, input);
   return result.lastInsertRowId;
 }
@@ -376,6 +384,7 @@ export async function updateWord(db: SQLiteDatabase, id: number, input: WordInpu
       input.meaningZh, input.pos, input.jlpt, input.notes,
       input.starred ? (existing?.starredAt ?? new Date().toISOString()) : null, id,
     );
+    await markDirtyById(db, 'word', id);
     await saveExample(db, id, input);
   });
 }
@@ -443,6 +452,7 @@ async function mergeCsvInto(db: SQLiteDatabase, id: number, csv: CsvWord, now: s
     csv.meaningEn, csv.meaningZh, csv.pos, csv.jlpt, csv.topic, csv.notes, now,
     csv.starred ? 1 : 0, now, id,
   );
+  await markDirtyById(db, 'word', id);
 }
 
 /** Carry out an import: add the new words, and merge the duplicates you ticked. */
@@ -487,21 +497,29 @@ async function saveExample(db: SQLiteDatabase, wordId: number, input: WordInput)
   const ja = markTarget(input.example.ja.trim(), input.word);
   const exists = await db.getFirstAsync('SELECT 1 FROM sentences WHERE word_id = ? AND ja = ?', wordId, ja);
   if (exists) return;
-  const translation = input.example.translation.trim();
-  await db.runAsync(
-    'INSERT INTO sentences (word_id, ja, en, zh, seen) VALUES (?, ?, ?, ?, 1)',
-    wordId, ja, translation, translation,
+  // AI examples come with both translations; one typed in by hand is used for both languages.
+  const en = (input.example.en ?? input.example.translation).trim();
+  const zh = (input.example.zh ?? input.example.translation).trim();
+  const result = await db.runAsync(
+    `INSERT INTO sentences (word_id, ja, en, zh, seen, uid) VALUES (?, ?, ?, ?, 1, ${NEW_UID})`,
+    wordId, ja, en, zh,
   );
+  await markDirtyById(db, 'sentence', result.lastInsertRowId);
 }
 
 /** Wrap the first appearance of the word in {braces}, so it gets highlighted. */
 function markTarget(sentence: string, word: string): string {
+  if (sentence.includes('{')) return sentence;
   return sentence.includes(word) ? sentence.replace(word, `{${word}}`) : sentence;
 }
 
 /** Delete a word you typed in yourself, with its sentences and history. */
 export async function deleteWord(db: SQLiteDatabase, id: number) {
-  await db.runAsync('DELETE FROM words WHERE id = ? AND is_custom = 1', id);
+  const row = await db.getFirstAsync<{ uid: string }>('SELECT uid FROM words WHERE id = ? AND is_custom = 1', id);
+  if (!row) return;
+  await markWordChildrenDeleted(db, id);
+  await db.runAsync('DELETE FROM words WHERE id = ?', id);
+  await markDirty(db, 'word', row.uid);
 }
 
 /**
@@ -553,6 +571,7 @@ export async function revealNextSentence(db: SQLiteDatabase, wordId: number): Pr
   );
   if (!row) return null;
   await db.runAsync('UPDATE sentences SET seen = 1 WHERE id = ?', row.id);
+  await markDirtyById(db, 'sentence', row.id);
   return toSentence({ ...row, seen: 1 });
 }
 
@@ -566,6 +585,7 @@ export async function countUnseenSentences(db: SQLiteDatabase, wordId: number): 
 
 export async function setSentenceFavorite(db: SQLiteDatabase, id: number, favorite: boolean) {
   await db.runAsync('UPDATE sentences SET favorite = ? WHERE id = ?', favorite ? 1 : 0, id);
+  await markDirtyById(db, 'sentence', id);
 }
 
 // ── Review ───────────────────────────────────────────────────
@@ -592,10 +612,43 @@ export async function recordReview(
   remembered: boolean,
   now = new Date(),
 ) {
-  await db.runAsync(
-    'INSERT INTO review_logs (word_id, rating, state, reviewed_at, day) VALUES (?, ?, 0, ?, ?)',
+  const result = await db.runAsync(
+    `INSERT INTO review_logs (word_id, rating, state, reviewed_at, day, uid) VALUES (?, ?, 0, ?, ?, ${NEW_UID})`,
     wordId, remembered ? 3 : 1, now.toISOString(), toLocalDay(now),
   );
+  await markDirtyById(db, 'review', result.lastInsertRowId);
+}
+
+// ── Topics ───────────────────────────────────────────────────
+
+/** Topics the AI created, oldest first. */
+export async function getCustomTopics(db: SQLiteDatabase): Promise<CustomTopic[]> {
+  const rows = await db.getAllAsync<{ id: string; label_ja: string; label_en: string; label_zh: string }>(
+    'SELECT * FROM topics ORDER BY created_at, id',
+  );
+  return rows.map((r) => ({ id: r.id, labelJa: r.label_ja, labelEn: r.label_en, labelZh: r.label_zh }));
+}
+
+/** Add a topic the AI suggested (once; an existing one keeps its names). */
+export async function addTopic(db: SQLiteDatabase, topic: CustomTopic) {
+  const result = await db.runAsync(
+    'INSERT INTO topics (id, label_ja, label_en, label_zh) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING',
+    topic.id, topic.labelJa, topic.labelEn, topic.labelZh,
+  );
+  if (result.changes > 0) await markDirty(db, 'topic', topic.id);
+}
+
+export async function setWordTopic(db: SQLiteDatabase, uid: string, topic: Topic | null) {
+  await db.runAsync('UPDATE words SET topic = ? WHERE uid = ?', topic, uid);
+  await markDirty(db, 'word', uid);
+}
+
+/** Saved words still in その他, for the AI to sort into topics. */
+export async function getUnsortedWords(db: SQLiteDatabase): Promise<(Word & { uid: string })[]> {
+  const rows = await db.getAllAsync<WordRow & { uid: string }>(
+    'SELECT * FROM words WHERE saved_at IS NOT NULL AND topic IS NULL ORDER BY saved_at DESC LIMIT 150',
+  );
+  return rows.map((row) => ({ ...toWord(row), uid: row.uid }));
 }
 
 // ── Settings ─────────────────────────────────────────────────

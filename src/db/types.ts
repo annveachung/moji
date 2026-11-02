@@ -1,6 +1,13 @@
 export type PartOfSpeech = 'noun' | 'verb' | 'i-adj' | 'na-adj' | 'adverb' | 'expression';
 
-export type Topic = 'daily-life' | 'travel' | 'relationships' | 'work-tech' | 'anime-games';
+/** The topics moji starts with. The AI can add more (stored in the topics table). */
+export const BUILT_IN_TOPICS = ['daily-life', 'travel', 'relationships', 'work-tech', 'anime-games'] as const;
+
+/** A topic id: a built-in one, or one the AI created, e.g. "food". */
+export type Topic = string;
+
+/** A topic the AI created, with its names. */
+export type CustomTopic = { id: string; labelJa: string; labelEn: string; labelZh: string };
 
 /** A topic, or その他 (other): words without a topic, such as most words you add yourself. */
 export type TopicFilter = Topic | 'other';
@@ -109,9 +116,14 @@ export type WordInput = {
   jlpt: JlptLevel | null;
   notes: string;
   starred: boolean;
-  example: { ja: string; translation: string } | null;
-  /** Usually left empty (その他); imports may carry one. */
+  /** translation is typed by hand; the AI gives en and zh separately instead. */
+  example: { ja: string; translation: string; en?: string; zh?: string } | null;
+  /** Usually left empty (その他); imports and the AI may carry one. */
   topic?: Topic | null;
+  /** From the AI: how the kanji relate to Chinese. */
+  zhLinkKind?: ChineseLinkKind | null;
+  zhNoteEn?: string;
+  zhNoteZh?: string;
 };
 
 /** Which catalog words belong to a collection in 発見. All set conditions must match. */

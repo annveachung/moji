@@ -1,29 +1,28 @@
-import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GoogleButton } from '@/components/google-button';
 import { Icon } from '@/components/ui';
 import { ApiError } from '@/lib/api';
+import { googleConfigured } from '@/lib/google';
 import { useAuth } from '@/state/auth';
 import colors from '@/theme/colors';
-
-const configured = Boolean(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
 
 /** Shown until you sign in once. Google sign-in is the only way in. */
 export default function SignInScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { signIn } = useAuth();
+  const { signIn, signInWithIdToken } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(configured ? null : t('auth.errors.notConfigured'));
+  const [error, setError] = useState<string | null>(googleConfigured ? null : t('auth.errors.notConfigured'));
 
-  const onPress = async () => {
+  const attempt = async (task: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     try {
-      await signIn(); // on success the app switches to the tabs by itself
+      await task(); // on success the app switches to the tabs by itself
     } catch (e) {
       setError(e instanceof ApiError && e.status === 0 ? t('auth.errors.network') : t('auth.errors.failed'));
     } finally {
@@ -53,15 +52,14 @@ export default function SignInScreen() {
             <ActivityIndicator color={colors.primary.DEFAULT} />
             <Text className="text-[14px] text-ink-soft">{t('auth.signingIn')}</Text>
           </View>
-        ) : (
-          // Google's official button: required by their branding rules.
-          <GoogleSigninButton
-            size={GoogleSigninButton.Size.Wide}
-            color={GoogleSigninButton.Color.Light}
-            disabled={!configured}
-            onPress={onPress}
+        ) : null}
+        {/* Kept mounted while busy (just hidden), so Google's web button isn't drawn twice. */}
+        <View style={busy ? { display: 'none' } : undefined}>
+          <GoogleButton
+            onPress={() => attempt(signIn)}
+            onIdToken={(idToken) => attempt(() => signInWithIdToken(idToken))}
           />
-        )}
+        </View>
         {error ? (
           <View className="flex-row items-start gap-2 rounded-2xl bg-error-soft p-3">
             <Icon name="error-outline" size={18} color={colors.error.DEFAULT} />

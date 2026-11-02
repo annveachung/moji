@@ -1,12 +1,11 @@
-import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
+import { DailyReading } from '@/components/daily-reading';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
 import { Card, Chip, EmptyState, Icon, IconButton, Pill, SectionHeader, type IconName } from '@/components/ui';
 import {
@@ -16,9 +15,12 @@ import {
   type GrammarImportPlan,
 } from '@/db/grammar';
 import type { GrammarRule, JlptLevel } from '@/db/types';
+import { showAlert } from '@/lib/alert';
+import { pickCsvText } from '@/lib/file-io';
 import { csvToGrammar, type GrammarCsvProblem } from '@/lib/grammar-csv';
 import { meaningFor } from '@/lib/meaning';
 import { useSettings } from '@/state/settings';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 const LEVELS: JlptLevel[] = [5, 4, 3, 2, 1];
@@ -38,9 +40,11 @@ export default function GrammarScreen() {
   const [rules, setRules] = useState<GrammarRule[] | null>(null);
   const [importing, setImporting] = useState<Importing | null>(null);
 
+  const { dataVersion } = useSync();
+
   const load = useCallback(() => {
     getGrammarRules(db, { search, jlpt: level }).then(setRules);
-  }, [db, search, level]);
+  }, [db, search, level, dataVersion]);
 
   useFocusEffect(load);
 
@@ -48,16 +52,13 @@ export default function GrammarScreen() {
 
   /** Pick a CSV, read it, and open the review sheet. Nothing is saved until you confirm. */
   const importCsv = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({
-      type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'public.comma-separated-values-text'],
-      copyToCacheDirectory: true,
-    });
-    if (picked.canceled) return;
     try {
-      const { rules: rows, problems, unknownColumns } = csvToGrammar(await new File(picked.assets[0].uri).text());
+      const text = await pickCsvText();
+      if (text === null) return;
+      const { rules: rows, problems, unknownColumns } = csvToGrammar(text);
       setImporting({ plan: await planGrammarImport(db, rows), problems, unknownColumns });
     } catch {
-      Alert.alert(t('grammar.importTitle'), t('importing.error'));
+      showAlert(t('grammar.importTitle'), t('importing.error'));
     }
   };
 
@@ -66,7 +67,7 @@ export default function GrammarScreen() {
     const result = await applyGrammarImport(db, importing.plan, mergeIds);
     setImporting(null);
     load();
-    Alert.alert(t('importing.doneTitle'), t('grammar.doneBody', result));
+    showAlert(t('importing.doneTitle'), t('grammar.doneBody', result));
   };
 
   const toReview = ({ plan, problems, unknownColumns }: Importing): ImportReview => ({
@@ -190,31 +191,5 @@ function GrammarCard({ rule }: { rule: GrammarRule }) {
         </View>
       ) : null}
     </Pressable>
-  );
-}
-
-/**
- * Today's reading: an NHK news story rewritten in easy Japanese and a short daily
- * reading. Both come from the AI server, so for now this explains what's coming.
- */
-function DailyReading() {
-  const { t } = useTranslation();
-  const items: { icon: IconName; label: string }[] = [
-    { icon: 'newspaper', label: t('grammar.newsNhk') },
-    { icon: 'local-library', label: t('grammar.newsDaily') },
-  ];
-  return (
-    <Card>
-      <SectionHeader title={t('grammar.newsTitle')} right={<Pill label={t('grammar.aiSoon')} icon="auto-awesome" />} />
-      <View className="flex-row gap-2">
-        {items.map((item) => (
-          <View key={item.label} className="flex-1 gap-1.5 rounded-2xl bg-surface-low p-3">
-            <Icon name={item.icon} size={20} color={colors.primary.DEFAULT} />
-            <Text className="font-display-semibold text-[13px] leading-4 text-ink">{item.label}</Text>
-          </View>
-        ))}
-      </View>
-      <Text className="text-[12px] leading-4 text-ink-soft">{t('grammar.newsSoon')}</Text>
-    </Card>
   );
 }

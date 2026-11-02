@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 import { SEED_RELATIONS, SEED_WORDS } from './seed-data';
 
@@ -8,7 +9,7 @@ export const DATABASE_NAME = 'moji.db';
  * Bump this and add a `if (version < N)` block below whenever the schema changes.
  * SQLite remembers the version in `PRAGMA user_version`, so each migration runs once.
  */
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -16,7 +17,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const version = row?.user_version ?? 0;
   if (version >= DATABASE_VERSION) return;
 
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  // The web version of SQLite has no exclusive transactions; a normal one is fine there (one tab).
+  const transaction = (task: (tx: SQLiteDatabase) => Promise<void>) =>
+    Platform.OS === 'web' ? db.withTransactionAsync(() => task(db)) : db.withExclusiveTransactionAsync(task);
+
+  await transaction(async (tx) => {
     if (version < 1) {
       await tx.execAsync(`
         CREATE TABLE words (
@@ -134,6 +139,59 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
         CREATE INDEX idx_grammar_jlpt ON grammar(jlpt);
         CREATE INDEX idx_grammar_sentences_rule ON grammar_sentences(grammar_id);
+      `);
+    }
+    if (version < 4) {
+      // Sync with moji-api: every row you own gets a uid that is the same on all your devices.
+      // Starter-catalog words use their writing and reading, so each device finds the same word.
+      // The outbox lists rows changed here that the server hasn't got yet.
+      const randomUid = "lower(hex(randomblob(16)))";
+      await tx.execAsync(`
+        ALTER TABLE words ADD COLUMN uid TEXT;
+        ALTER TABLE sentences ADD COLUMN uid TEXT;
+        ALTER TABLE review_logs ADD COLUMN uid TEXT;
+        ALTER TABLE grammar ADD COLUMN uid TEXT;
+        ALTER TABLE grammar_sentences ADD COLUMN uid TEXT;
+
+        UPDATE words SET uid = CASE WHEN is_custom = 1 THEN ${randomUid} ELSE 'cat:' || word || '|' || reading END;
+        -- Starter sentences come with the app; only your own (on words you added) are synced.
+        UPDATE sentences SET uid = ${randomUid} WHERE word_id IN (SELECT id FROM words WHERE is_custom = 1);
+        UPDATE review_logs SET uid = ${randomUid};
+        UPDATE grammar SET uid = ${randomUid};
+        UPDATE grammar_sentences SET uid = ${randomUid};
+
+        CREATE UNIQUE INDEX idx_words_uid ON words(uid);
+        CREATE UNIQUE INDEX idx_sentences_uid ON sentences(uid);
+        CREATE UNIQUE INDEX idx_review_logs_uid ON review_logs(uid);
+        CREATE UNIQUE INDEX idx_grammar_uid ON grammar(uid);
+        CREATE UNIQUE INDEX idx_grammar_sentences_uid ON grammar_sentences(uid);
+
+        -- Topics the AI created (the built-in ones live in the app's translations).
+        CREATE TABLE topics (
+          id TEXT PRIMARY KEY,
+          label_ja TEXT NOT NULL,
+          label_en TEXT NOT NULL,
+          label_zh TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        );
+
+        CREATE TABLE outbox (
+          kind TEXT NOT NULL,
+          uid TEXT NOT NULL,
+          -- Bumped on every change, so a change made during an upload isn't lost.
+          version INTEGER NOT NULL DEFAULT 1,
+          PRIMARY KEY (kind, uid)
+        );
+
+        CREATE TABLE sync_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+        -- Everything you already have goes up on the first sync.
+        INSERT INTO outbox (kind, uid) SELECT 'word', uid FROM words
+          WHERE saved_at IS NOT NULL OR is_custom = 1 OR starred_at IS NOT NULL OR notes != '';
+        INSERT INTO outbox (kind, uid) SELECT 'sentence', uid FROM sentences WHERE uid IS NOT NULL;
+        INSERT INTO outbox (kind, uid) SELECT 'review', uid FROM review_logs;
+        INSERT INTO outbox (kind, uid) SELECT 'grammar', uid FROM grammar;
+        INSERT INTO outbox (kind, uid) SELECT 'grammarSentence', uid FROM grammar_sentences;
       `);
     }
     await tx.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

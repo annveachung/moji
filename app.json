@@ -21,8 +21,12 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "server",
-      "favicon": "./assets/images/favicon.png"
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "moji",
+      "shortName": "moji",
+      "themeColor": "#FAF4EC",
+      "backgroundColor": "#FAF4EC"
     },
     "plugins": [
       "expo-router",

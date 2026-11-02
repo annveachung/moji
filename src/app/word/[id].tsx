@@ -2,7 +2,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
@@ -21,10 +21,12 @@ import {
   updateWordNotes,
 } from '@/db/queries';
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
+import { showAlert } from '@/lib/alert';
 import { furiganaToReading } from '@/lib/furigana';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
+import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 const ZH_LINK_STYLE: Record<ChineseLinkKind, { icon: IconName; tone: 'matcha' | 'mustard' | 'error' }> = {
@@ -57,6 +59,7 @@ export default function WordDetailScreen() {
   const [related, setRelated] = useState<RelatedWord[]>([]);
   const [notes, setNotes] = useState('');
   const [speed, setSpeed] = useState(1);
+  const { dataVersion, topicLabel } = useSync();
 
   const load = useCallback(async () => {
     const loaded = await getWord(db, wordId);
@@ -72,7 +75,7 @@ export default function WordDetailScreen() {
     }
     setSentences(shown);
     setUnseen(await countUnseenSentences(db, wordId));
-  }, [db, wordId]);
+  }, [db, wordId, dataVersion]);
 
   // Reload when you come back, e.g. after editing the word.
   useFocusEffect(
@@ -104,7 +107,7 @@ export default function WordDetailScreen() {
   };
 
   const confirmDelete = () =>
-    Alert.alert(t('word.deleteConfirmTitle'), t('word.deleteConfirmBody'), [
+    showAlert(t('word.deleteConfirmTitle'), t('word.deleteConfirmBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -148,7 +151,7 @@ export default function WordDetailScreen() {
           <View className="flex-row items-center justify-between gap-2">
             <View className="flex-1 flex-row flex-wrap gap-1.5">
               <Pill label={word.jlpt ? t('jlpt.level', { level: word.jlpt }) : t('jlpt.none')} tone="mustard" />
-              {word.topic && <Pill label={t(`topic.${word.topic}`)} />}
+              {word.topic && <Pill label={topicLabel(word.topic)} />}
             </View>
             <View className="flex-row items-center gap-1.5">
               <TogglePill

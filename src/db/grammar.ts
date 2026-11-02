@@ -2,6 +2,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { GrammarCsvRow } from '@/lib/grammar-csv';
 
+import { markDirty, markDirtyById, NEW_UID } from './sync';
+
 import type { GrammarRule, GrammarSentence, JlptLevel } from './types';
 
 /** Database access for the 文法 tab: grammar rules and the sentences saved for them. */
@@ -95,14 +97,17 @@ export async function saveGrammarSentence(
   sentence: { ja: string; en: string; zh: string },
   source: GrammarSentence['source'],
 ) {
-  await db.runAsync(
-    'INSERT INTO grammar_sentences (grammar_id, ja, en, zh, source) VALUES (?, ?, ?, ?, ?)',
+  const result = await db.runAsync(
+    `INSERT INTO grammar_sentences (grammar_id, ja, en, zh, source, uid) VALUES (?, ?, ?, ?, ?, ${NEW_UID})`,
     grammarId, sentence.ja, sentence.en, sentence.zh, source,
   );
+  await markDirtyById(db, 'grammarSentence', result.lastInsertRowId);
 }
 
 export async function deleteGrammarSentence(db: SQLiteDatabase, id: number) {
+  const row = await db.getFirstAsync<{ uid: string | null }>('SELECT uid FROM grammar_sentences WHERE id = ?', id);
   await db.runAsync('DELETE FROM grammar_sentences WHERE id = ?', id);
+  await markDirty(db, 'grammarSentence', row?.uid);
 }
 
 // ── Import ───────────────────────────────────────────────────
@@ -162,10 +167,11 @@ export async function applyGrammarImport(
   await db.withTransactionAsync(async () => {
     for (const row of plan.fresh) {
       const result = await db.runAsync(
-        `INSERT INTO grammar (pattern, meaning_en, meaning_zh, jlpt, formation, explanation)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO grammar (pattern, meaning_en, meaning_zh, jlpt, formation, explanation, uid)
+         VALUES (?, ?, ?, ?, ?, ?, ${NEW_UID})`,
         row.pattern, row.meaningEn, row.meaningZh, row.jlpt, row.formation, row.explanation,
       );
+      await markDirtyById(db, 'grammar', result.lastInsertRowId);
       await addExamples(db, result.lastInsertRowId, row);
     }
     for (const { csv, existing } of plan.duplicates) {
@@ -180,6 +186,7 @@ export async function applyGrammarImport(
          WHERE id = ?`,
         csv.meaningEn, csv.meaningZh, csv.jlpt, csv.formation, csv.explanation, existing.id,
       );
+      await markDirtyById(db, 'grammar', existing.id);
       await addExamples(db, existing.id, csv);
       merged++;
     }

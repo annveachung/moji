@@ -13,9 +13,11 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { DbGate, onDatabaseError } from '@/components/db-gate';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/database';
 import { AuthProvider, useAuth } from '@/state/auth';
 import { SettingsProvider } from '@/state/settings';
+import { SyncProvider } from '@/state/sync';
 import colors from '@/theme/colors';
 
 // Keep the splash screen up until fonts are loaded and we know whether you're signed in.
@@ -31,14 +33,18 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
-      <SettingsProvider>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <AppStack />
-        </AuthProvider>
-      </SettingsProvider>
-    </SQLiteProvider>
+    <DbGate>
+      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded} onError={onDatabaseError}>
+        <SettingsProvider>
+          <AuthProvider>
+            <SyncProvider>
+              <StatusBar style="dark" />
+              <AppStack />
+            </SyncProvider>
+          </AuthProvider>
+        </SettingsProvider>
+      </SQLiteProvider>
+    </DbGate>
   );
 }
 
