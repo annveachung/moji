@@ -1,4 +1,6 @@
-import type { ChineseLinkKind, JlptLevel, PartOfSpeech, RelationKind, Topic } from './types';
+import type { LEGACY_TOPICS } from '@/lib/categories';
+
+import type { ChineseLinkKind, JlptLevel, PartOfSpeech, RelationKind } from './types';
 
 /**
  * Starter vocabulary. Each word has furigana markup, English and Traditional Chinese
@@ -13,7 +15,8 @@ export type SeedWord = {
   zh: string;
   pos: PartOfSpeech;
   jlpt: JlptLevel | null;
-  topic: Topic;
+  /** The old topic names: the v6 migration turns them into categories, as for everyone's words. */
+  topic: keyof typeof LEGACY_TOPICS;
   tags?: string[];
   zhLink: ChineseLinkKind;
   zhNoteEn: string;

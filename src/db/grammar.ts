@@ -2,6 +2,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { GrammarCsvRow } from '@/lib/grammar-csv';
 
+import { isGrammarFunction, type GrammarFunction } from '@/lib/categories';
+
 import { markDirty, markDirtyById, NEW_UID } from './sync';
 
 import type { GrammarRule, GrammarSentence, JlptLevel } from './types';
@@ -16,6 +18,7 @@ type GrammarRow = {
   jlpt: JlptLevel | null;
   formation: string;
   explanation: string;
+  category: GrammarRule['category'];
   starred_at: string | null;
   sentence_count: number;
 };
@@ -36,6 +39,7 @@ function toRule(row: GrammarRow): GrammarRule {
   return {
     id: row.id,
     pattern: row.pattern,
+    category: isGrammarFunction(row.category) ? row.category : null,
     meaningEn: row.meaning_en,
     meaningZh: row.meaning_zh,
     jlpt: row.jlpt,
@@ -53,13 +57,19 @@ function toSentence(row: SentenceRow): GrammarSentence {
 /** Rules for the list, easiest level first, narrowed by level and search. */
 export async function getGrammarRules(
   db: SQLiteDatabase,
-  filters: { search: string; jlpt: JlptLevel | null },
+  filters: { search: string; jlpt: JlptLevel | null; category?: GrammarFunction | 'other' | null },
 ): Promise<GrammarRule[]> {
   const where: string[] = [];
   const params: (string | number)[] = [];
   if (filters.jlpt) {
     where.push('g.jlpt = ?');
     params.push(filters.jlpt);
+  }
+  if (filters.category === 'other') {
+    where.push('g.category IS NULL');
+  } else if (filters.category) {
+    where.push('g.category = ?');
+    params.push(filters.category);
   }
   const search = filters.search.trim();
   if (search) {
@@ -77,6 +87,18 @@ export async function getGrammarRules(
 export async function getGrammarRule(db: SQLiteDatabase, id: number): Promise<GrammarRule | null> {
   const row = await db.getFirstAsync<GrammarRow>(`${SELECT_RULE} WHERE g.id = ?`, id);
   return row ? toRule(row) : null;
+}
+
+/** Put a rule under a function (条件, 理由…), or null for その他. */
+export async function setGrammarCategory(db: SQLiteDatabase, id: number, category: GrammarFunction | null) {
+  await db.runAsync('UPDATE grammar SET category = ? WHERE id = ?', category, id);
+  await markDirtyById(db, 'grammar', id);
+}
+
+/** Rules not sorted into a function yet, for the AI. */
+export async function getUncategorizedGrammar(db: SQLiteDatabase): Promise<GrammarRule[]> {
+  const rows = await db.getAllAsync<GrammarRow>(`${SELECT_RULE} WHERE g.category IS NULL LIMIT 150`);
+  return rows.map(toRule);
 }
 
 /** ⭐ Star a rule to review it in 復習 (文法). */

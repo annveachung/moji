@@ -1,3 +1,5 @@
+import type { GrammarFunction, WordCategory } from '@/lib/categories';
+
 export type PartOfSpeech = 'noun' | 'verb' | 'i-adj' | 'na-adj' | 'adverb' | 'expression';
 
 /**
@@ -6,16 +8,13 @@ export type PartOfSpeech = 'noun' | 'verb' | 'i-adj' | 'na-adj' | 'adverb' | 'ex
  */
 export type VerbGroup = 'godan' | 'ichidan' | 'irregular';
 
-/** The topics moji starts with. The AI can add more (stored in the topics table). */
-export const BUILT_IN_TOPICS = ['daily-life', 'travel', 'relationships', 'work-tech', 'anime-games'] as const;
+/**
+ * A word's category: one of the fixed list in lib/categories.ts (people, food, transport…).
+ * Stored in the words.topic column. null = その他 (not sorted yet, or fits nowhere).
+ */
+export type Topic = WordCategory;
 
-/** A topic id: a built-in one, or one the AI created, e.g. "food". */
-export type Topic = string;
-
-/** A topic the AI created, with its names. */
-export type CustomTopic = { id: string; labelJa: string; labelEn: string; labelZh: string };
-
-/** A topic, or その他 (other): words without a topic, such as most words you add yourself. */
+/** A category, or その他 (other): words without one. */
 export type TopicFilter = Topic | 'other';
 
 /** 5 = N5 (easiest) … 1 = N1 (hardest). null = not on the JLPT lists (e.g. anime words). */
@@ -155,6 +154,8 @@ export type Suggestion =
 export type GrammarRule = {
   id: number;
   pattern: string;
+  /** What the pattern does (条件, 理由…); null = not sorted yet. */
+  category: GrammarFunction | null;
   meaningEn: string;
   meaningZh: string;
   jlpt: JlptLevel | null;

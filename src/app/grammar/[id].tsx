@@ -6,11 +6,20 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
+import { CategoryPicker } from '@/components/category-picker';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton } from '@/components/ui';
-import { deleteGrammarSentence, getGrammarRule, getGrammarSentences, saveGrammarSentence, setGrammarStarred } from '@/db/grammar';
+import {
+  deleteGrammarSentence,
+  getGrammarRule,
+  getGrammarSentences,
+  saveGrammarSentence,
+  setGrammarCategory,
+  setGrammarStarred,
+} from '@/db/grammar';
 import type { GrammarRule, GrammarSentence } from '@/db/types';
 import { showAlert } from '@/lib/alert';
 import { generateGrammarSentence, type AiSentence } from '@/lib/ai';
+import { isGrammarFunction } from '@/lib/categories';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
@@ -49,6 +58,7 @@ export default function GrammarDetailScreen() {
 
   const { dataVersion } = useSync();
   const [draft, setDraft] = useState<AiSentence | null>(null);
+  const [picking, setPicking] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
@@ -120,10 +130,28 @@ export default function GrammarDetailScreen() {
       <ScrollView
         contentContainerClassName="gap-4 py-4"
         contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 32 }}>
+        {picking ? (
+          <CategoryPicker
+            kind="grammar"
+            value={rule.category}
+            onClose={() => setPicking(false)}
+            onPick={async (category) => {
+              setPicking(false);
+              await setGrammarCategory(db, rule.id, isGrammarFunction(category) ? category : null);
+              load();
+            }}
+          />
+        ) : null}
         {/* The pattern and its meaning */}
         <View className="gap-3 rounded-[28px] bg-card p-5 shadow-md shadow-ink/10">
           <View className="flex-row items-center justify-between">
-            {rule.jlpt !== null ? <Pill label={`JLPT N${rule.jlpt}`} tone="mustard" /> : <View />}
+            <View className="flex-1 flex-row flex-wrap gap-1.5">
+              {rule.jlpt !== null ? <Pill label={`JLPT N${rule.jlpt}`} tone="mustard" /> : null}
+              {/* What the pattern does, chosen by the AI: tap to change it. */}
+              <Pressable accessibilityRole="button" accessibilityLabel={t('categoryUi.change')} onPress={() => setPicking(true)}>
+                <Pill label={t(`grammarFn.${rule.category ?? 'other'}`)} icon="edit" />
+              </Pressable>
+            </View>
             <View className="flex-row items-center gap-2">
               <IconButton
                 icon={rule.starredAt ? 'star' : 'star-border'}

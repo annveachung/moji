@@ -1,8 +1,9 @@
-import { BUILT_IN_TOPICS, type JlptLevel, type PartOfSpeech, type Topic, type VerbGroup, type Word } from '@/db/types';
+import type { JlptLevel, PartOfSpeech, Topic, VerbGroup, Word } from '@/db/types';
 import en from '@/i18n/en';
 import ja from '@/i18n/ja';
 import zhTW from '@/i18n/zh-TW';
 
+import { isWordCategory, LEGACY_TOPICS, WORD_CATEGORIES } from './categories';
 import { parseCsv, toCsv } from './csv';
 import { parseVerbGroup } from './verb';
 
@@ -61,16 +62,24 @@ function parseJlpt(value: string): JlptLevel | null {
   return n >= 1 && n <= 5 ? (n as JlptLevel) : null;
 }
 
-/** A topic code ("travel") or its label in any app language ("旅行"). Anything else → none. */
+/**
+ * A category as its code ("food") or its name in any app language ("食べ物・飲み物・料理").
+ * Older files with the previous topics ("travel", "旅行") still work. Anything else → その他.
+ */
 function parseTopic(value: string): Topic | null {
-  // Topics the AI made are kept by their id (e.g. "food"); built-in ones also match their labels.
   const v = value.trim().toLowerCase();
   if (!v) return null;
-  const builtIn = BUILT_IN_TOPICS.find((code) =>
-    [code, en.topic[code], ja.topic[code], zhTW.topic[code]].map((l) => l.toLowerCase()).includes(v),
+  if (isWordCategory(v)) return v;
+  const named = WORD_CATEGORIES.find((code) =>
+    [en.category[code], ja.category[code], zhTW.category[code]].some((label) => label.toLowerCase() === v),
   );
-  if (builtIn) return builtIn;
-  return /^[a-z0-9-]+$/.test(v) && v !== 'other' ? v : null;
+  if (named) return named;
+  const legacy = Object.keys(LEGACY_TOPICS).find((code) =>
+    [code, en.topic[code as keyof typeof en.topic], ja.topic[code as keyof typeof ja.topic], zhTW.topic[code as keyof typeof zhTW.topic]]
+      .map((label) => label.toLowerCase())
+      .includes(v),
+  );
+  return legacy ? LEGACY_TOPICS[legacy]! : null;
 }
 
 function parseStarred(value: string): boolean {

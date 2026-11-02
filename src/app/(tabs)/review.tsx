@@ -11,6 +11,7 @@ import { WordFilters } from '@/components/word-filters';
 import { getStarredGrammar, setGrammarStarred } from '@/db/grammar';
 import { getLibrary, setWordStarred } from '@/db/queries';
 import type { GrammarRule, JlptLevel, LibraryFilters, LibraryWord } from '@/db/types';
+import { GRAMMAR_FUNCTIONS, type GrammarFunction } from '@/lib/categories';
 import { padRows, useLayout } from '@/lib/layout';
 import { meaningFor } from '@/lib/meaning';
 import { useSettings } from '@/state/settings';
@@ -42,6 +43,8 @@ export default function ReviewScreen() {
   // 文法 has one tag, its JLPT level (the same chips as the 文法 tab).
   const [grammarLevel, setGrammarLevel] = useState<JlptLevel | null>(null);
   const pickLevel = (level: JlptLevel | null) => setGrammarLevel(grammarLevel === level ? null : level);
+  const [grammarFn, setGrammarFn] = useState<GrammarFunction | 'other' | null>(null);
+  const pickFn = (fn: GrammarFunction | 'other') => setGrammarFn(grammarFn === fn ? null : fn);
 
   const load = useCallback(async () => {
     setWords(await getLibrary(db, filters));
@@ -64,7 +67,12 @@ export default function ReviewScreen() {
     load();
   };
 
-  const shownGrammar = grammar && grammarLevel !== null ? grammar.filter((rule) => rule.jlpt === grammarLevel) : grammar;
+  const shownGrammar =
+    grammar?.filter(
+      (rule) =>
+        (grammarLevel === null || rule.jlpt === grammarLevel) &&
+        (grammarFn === null || (rule.category ?? 'other') === grammarFn),
+    ) ?? null;
   const items = section === 'words' ? words : shownGrammar;
   const columns = layout.columns;
 
@@ -93,12 +101,19 @@ export default function ReviewScreen() {
                 ))}
               </ScrollView>
             )}
+            {section === 'grammar' ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
+                {[...GRAMMAR_FUNCTIONS, 'other' as const].map((fn) => (
+                  <Chip key={fn} label={t(`grammarFn.${fn}`)} selected={grammarFn === fn} onPress={() => pickFn(fn)} />
+                ))}
+              </ScrollView>
+            ) : null}
           </View>
         }
         ListEmptyComponent={
           items !== null ? (
             <View className="items-center gap-3">
-              {(section === 'words' && filtering) || (section === 'grammar' && grammarLevel !== null) ? (
+              {(section === 'words' && filtering) || (section === 'grammar' && (grammarLevel !== null || grammarFn !== null)) ? (
                 <EmptyState icon="search-off" message={t('library.noResults')} />
               ) : (
                 <>
@@ -131,6 +146,8 @@ export default function ReviewScreen() {
                 onUnstar={() => unstarRule(item as GrammarRule)}
                 activeLevel={grammarLevel}
                 onLevel={pickLevel}
+                activeFn={grammarFn}
+                onFn={pickFn}
               />
             )}
           </View>
@@ -174,12 +191,17 @@ function StarredRule({
   onUnstar,
   activeLevel,
   onLevel,
+  activeFn,
+  onFn,
 }: {
   rule: GrammarRule;
   onUnstar: () => void;
   activeLevel: JlptLevel | null;
   /** Tap the level tag to show only that level (tap again to clear). */
   onLevel: (level: JlptLevel) => void;
+  activeFn: GrammarFunction | 'other' | null;
+  /** Tap the function tag to show only that kind of pattern. */
+  onFn: (fn: GrammarFunction | 'other') => void;
 }) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -208,11 +230,22 @@ function StarredRule({
         <IconButton icon="star" tone="star" size={34} label={t('review.unstar')} onPress={onUnstar} />
       </View>
       <Text className="text-[15px] font-semibold leading-5 text-ink">{meaningFor(rule, settings.meaningLanguage)}</Text>
-      {rule.formation ? (
-        <View className="self-start rounded-lg bg-surface-low px-2.5 py-1">
-          <Text className="text-[12px] text-ink-soft">{rule.formation}</Text>
-        </View>
-      ) : null}
+      <View className="flex-row flex-wrap items-center gap-1.5">
+        {rule.category ? (
+          <Pressable accessibilityRole="button" hitSlop={4} onPress={() => onFn(rule.category!)}>
+            <Pill
+              label={t(`grammarFn.${rule.category}`)}
+              tone={activeFn === rule.category ? 'primary' : 'outline'}
+              icon={activeFn === rule.category ? 'filter-alt' : undefined}
+            />
+          </Pressable>
+        ) : null}
+        {rule.formation ? (
+          <View className="rounded-lg bg-surface-low px-2.5 py-1">
+            <Text className="text-[12px] text-ink-soft">{rule.formation}</Text>
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }

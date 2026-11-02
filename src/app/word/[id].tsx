@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
+import { CategoryPicker } from '@/components/category-picker';
 import { FuriganaText } from '@/components/furigana-text';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
 import {
@@ -16,11 +17,13 @@ import {
   getWord,
   revealNextSentence,
   setSentenceFavorite,
+  setWordCategory,
   setWordSaved,
   setWordStarred,
 } from '@/db/queries';
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
 import { showAlert } from '@/lib/alert';
+import { isWordCategory } from '@/lib/categories';
 import { furiganaToReading } from '@/lib/furigana';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
@@ -60,6 +63,7 @@ export default function WordDetailScreen() {
   const [unseen, setUnseen] = useState(0);
   const [related, setRelated] = useState<RelatedWord[]>([]);
   const [speed, setSpeed] = useState(1);
+  const [picking, setPicking] = useState(false);
   const { dataVersion, topicLabel } = useSync();
 
   const load = useCallback(async () => {
@@ -146,12 +150,27 @@ export default function WordDetailScreen() {
         contentContainerClassName="gap-4 py-4"
         contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled">
+        {picking ? (
+          <CategoryPicker
+            kind="word"
+            value={word.topic}
+            onClose={() => setPicking(false)}
+            onPick={async (category) => {
+              setPicking(false);
+              await setWordCategory(db, word.id, isWordCategory(category) ? category : null);
+              setWord(await getWord(db, word.id));
+            }}
+          />
+        ) : null}
         {/* 1. The word itself */}
         <View className="rounded-[28px] bg-card p-5 shadow-md shadow-ink/10">
           <View className="flex-row items-center justify-between gap-2">
             <View className="flex-1 flex-row flex-wrap gap-1.5">
               <Pill label={word.jlpt ? t('jlpt.level', { level: word.jlpt }) : t('jlpt.none')} tone="mustard" />
-              {word.topic && <Pill label={topicLabel(word.topic)} />}
+              {/* The category the AI chose: tap to move the word to another one. */}
+              <Pressable accessibilityRole="button" accessibilityLabel={t('categoryUi.change')} onPress={() => setPicking(true)}>
+                <Pill label={topicLabel(word.topic)} icon="edit" />
+              </Pressable>
             </View>
             <View className="flex-row items-center gap-1.5">
               <TogglePill

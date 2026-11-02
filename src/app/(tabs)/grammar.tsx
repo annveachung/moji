@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
@@ -17,7 +17,9 @@ import {
 } from '@/db/grammar';
 import type { GrammarRule, JlptLevel } from '@/db/types';
 import { showAlert } from '@/lib/alert';
+import { GRAMMAR_FUNCTIONS, type GrammarFunction } from '@/lib/categories';
 import { pickCsvText } from '@/lib/file-io';
+import { useSortGrammar } from '@/lib/use-sort-grammar';
 import { padRows, useLayout } from '@/lib/layout';
 import { csvToGrammar, type GrammarCsvProblem } from '@/lib/grammar-csv';
 import { meaningFor } from '@/lib/meaning';
@@ -39,6 +41,8 @@ export default function GrammarScreen() {
   const { settings } = useSettings();
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState<JlptLevel | null>(null);
+  // What the pattern does (条件, 理由…); 'other' = not sorted.
+  const [fn, setFn] = useState<GrammarFunction | 'other' | null>(null);
   const [rules, setRules] = useState<GrammarRule[] | null>(null);
   const [importing, setImporting] = useState<Importing | null>(null);
 
@@ -46,12 +50,20 @@ export default function GrammarScreen() {
   const layout = useLayout();
 
   const load = useCallback(() => {
-    getGrammarRules(db, { search, jlpt: level }).then(setRules);
-  }, [db, search, level, dataVersion]);
+    getGrammarRules(db, { search, jlpt: level, category: fn }).then(setRules);
+  }, [db, search, level, fn, dataVersion]);
 
   useFocusEffect(load);
+  const { sorting, sort, sortQuietly } = useSortGrammar(load);
 
-  const filtering = search.trim() !== '' || level !== null;
+  // Rules imported before categories (or while offline) get sorted when you open 文法.
+  useEffect(() => {
+    sortQuietly();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filtering = search.trim() !== '' || level !== null || fn !== null;
+  const pickFn = (value: GrammarFunction | 'other') => setFn(fn === value ? null : value);
 
   const toggleStar = async (rule: GrammarRule) => {
     await setGrammarStarred(db, rule.id, rule.starredAt === null);
@@ -76,6 +88,8 @@ export default function GrammarScreen() {
     setImporting(null);
     load();
     showAlert(t('importing.doneTitle'), t('grammar.doneBody', result));
+    // New rules get their function from the AI in the background.
+    sortQuietly();
   };
 
   const toReview = ({ plan, problems, unknownColumns }: Importing): ImportReview => ({
@@ -128,6 +142,23 @@ export default function GrammarScreen() {
           <Chip key={n} label={`N${n}`} selected={level === n} onPress={() => setLevel(level === n ? null : n)} />
         ))}
       </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-0.5 py-1">
+        {[...GRAMMAR_FUNCTIONS, 'other' as const].map((value) => (
+          <Chip key={value} label={t(`grammarFn.${value}`)} selected={fn === value} onPress={() => pickFn(value)} />
+        ))}
+      </ScrollView>
+      {fn === 'other' && rules !== null && rules.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={sorting}
+          onPress={sort}
+          className={`flex-row items-center gap-1.5 self-start rounded-full bg-card px-3 py-1.5 shadow-sm shadow-ink/10 ${sorting ? 'opacity-50' : ''}`}>
+          <Icon name="auto-awesome" size={14} color={colors.primary.DEFAULT} />
+          <Text className="font-display-semibold text-[12px] text-ink">
+            {sorting ? t('categoryUi.sortingGrammar') : t('categoryUi.sortGrammar')}
+          </Text>
+        </Pressable>
+      ) : null}
 
       {rules !== null && rules.length > 0 ? (
         <Text className="px-1 font-display-semibold text-[12px] text-ink-soft">
@@ -168,7 +199,9 @@ export default function GrammarScreen() {
         }
         renderItem={({ item }) => (
           <View style={layout.columns > 1 ? { flex: 1 } : undefined}>
-            {item ? <GrammarCard rule={item} onToggleStar={() => toggleStar(item)} /> : null}
+            {item ? (
+              <GrammarCard rule={item} onToggleStar={() => toggleStar(item)} activeFn={fn} onFn={pickFn} />
+            ) : null}
           </View>
         )}
       />
@@ -177,7 +210,18 @@ export default function GrammarScreen() {
 }
 
 /** One rule in the list: pattern, level, ⭐, meaning, formation and how many examples. */
-function GrammarCard({ rule, onToggleStar }: { rule: GrammarRule; onToggleStar: () => void }) {
+function GrammarCard({
+  rule,
+  onToggleStar,
+  activeFn,
+  onFn,
+}: {
+  rule: GrammarRule;
+  onToggleStar: () => void;
+  activeFn: GrammarFunction | 'other' | null;
+  /** Tap the function tag to show only that kind of pattern. */
+  onFn: (fn: GrammarFunction | 'other') => void;
+}) {
   const router = useRouter();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -200,11 +244,22 @@ function GrammarCard({ rule, onToggleStar }: { rule: GrammarRule; onToggleStar: 
         />
       </View>
       <Text className="text-[15px] font-semibold leading-5 text-ink">{meaningFor(rule, settings.meaningLanguage)}</Text>
-      {rule.formation ? (
-        <View className="self-start rounded-lg bg-surface-low px-2.5 py-1">
-          <Text className="text-[12px] text-ink-soft">{rule.formation}</Text>
-        </View>
-      ) : null}
+      <View className="flex-row flex-wrap items-center gap-1.5">
+        {rule.category ? (
+          <Pressable accessibilityRole="button" hitSlop={4} onPress={() => onFn(rule.category!)}>
+            <Pill
+              label={t(`grammarFn.${rule.category}`)}
+              tone={activeFn === rule.category ? 'primary' : 'outline'}
+              icon={activeFn === rule.category ? 'filter-alt' : undefined}
+            />
+          </Pressable>
+        ) : null}
+        {rule.formation ? (
+          <View className="rounded-lg bg-surface-low px-2.5 py-1">
+            <Text className="text-[12px] text-ink-soft">{rule.formation}</Text>
+          </View>
+        ) : null}
+      </View>
       {rule.sentenceCount > 0 ? (
         <View className="flex-row items-center gap-1">
           <Icon name="format-quote" size={14} color={colors.ink.muted} />

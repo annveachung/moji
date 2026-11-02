@@ -9,7 +9,6 @@ import type { CsvWord } from '@/lib/word-csv';
 
 import type {
   CollectionFilter,
-  CustomTopic,
   LibraryFilters,
   LibraryWord,
   RelatedWord,
@@ -575,23 +574,12 @@ export async function setSentenceFavorite(db: SQLiteDatabase, id: number, favori
 
 // ── Review ───────────────────────────────────────────────────
 
-// ── Topics ───────────────────────────────────────────────────
+// ── Categories ───────────────────────────────────────────────
 
-/** Topics the AI created, oldest first. */
-export async function getCustomTopics(db: SQLiteDatabase): Promise<CustomTopic[]> {
-  const rows = await db.getAllAsync<{ id: string; label_ja: string; label_en: string; label_zh: string }>(
-    'SELECT * FROM topics ORDER BY created_at, id',
-  );
-  return rows.map((r) => ({ id: r.id, labelJa: r.label_ja, labelEn: r.label_en, labelZh: r.label_zh }));
-}
-
-/** Add a topic the AI suggested (once; an existing one keeps its names). */
-export async function addTopic(db: SQLiteDatabase, topic: CustomTopic) {
-  const result = await db.runAsync(
-    'INSERT INTO topics (id, label_ja, label_en, label_zh) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING',
-    topic.id, topic.labelJa, topic.labelEn, topic.labelZh,
-  );
-  if (result.changes > 0) await markDirty(db, 'topic', topic.id);
+/** Move a word (by its local id) to another category; null = その他. */
+export async function setWordCategory(db: SQLiteDatabase, id: number, category: Topic | null) {
+  await db.runAsync('UPDATE words SET topic = ? WHERE id = ?', category, id);
+  await markDirtyById(db, 'word', id);
 }
 
 export async function setWordTopic(db: SQLiteDatabase, uid: string, topic: Topic | null) {
@@ -599,7 +587,7 @@ export async function setWordTopic(db: SQLiteDatabase, uid: string, topic: Topic
   await markDirty(db, 'word', uid);
 }
 
-/** Saved words still in その他, for the AI to sort into topics. */
+/** Saved words still in その他, for the AI to sort into categories. */
 export async function getUnsortedWords(db: SQLiteDatabase): Promise<(Word & { uid: string })[]> {
   const rows = await db.getAllAsync<WordRow & { uid: string }>(
     'SELECT * FROM words WHERE saved_at IS NOT NULL AND topic IS NULL ORDER BY saved_at DESC LIMIT 150',
