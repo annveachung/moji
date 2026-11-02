@@ -651,6 +651,27 @@ export async function getUnsortedWords(db: SQLiteDatabase): Promise<(Word & { ui
   return rows.map((row) => ({ ...toWord(row), uid: row.uid }));
 }
 
+// ── AI suggestions (ことば) ──────────────────────────────────
+
+/** "word|reading" for every word in your library, to mark suggestions you've already saved. */
+export async function getSavedWordKeys(db: SQLiteDatabase): Promise<Set<string>> {
+  const rows = await db.getAllAsync<{ key: string }>(
+    "SELECT word || '|' || reading AS key FROM words WHERE saved_at IS NOT NULL",
+  );
+  return new Set(rows.map((r) => r.key));
+}
+
+/** Every word in your library (just the writing), so the AI doesn't suggest them again. */
+export async function getSavedWordList(db: SQLiteDatabase): Promise<string[]> {
+  const rows = await db.getAllAsync<{ word: string }>('SELECT word FROM words WHERE saved_at IS NOT NULL ORDER BY saved_at DESC LIMIT 300');
+  return rows.map((r) => r.word);
+}
+
+export async function getSetting(db: SQLiteDatabase, key: string): Promise<string | null> {
+  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key);
+  return row?.value ?? null;
+}
+
 // ── Settings ─────────────────────────────────────────────────
 
 export async function getAllSettings(db: SQLiteDatabase): Promise<Record<string, string>> {

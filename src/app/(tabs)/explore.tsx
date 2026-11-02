@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { AiWordStrip, GenerateButton, useAiSuggestions } from '@/components/ai-suggestions';
 import { AppHeader } from '@/components/app-header';
 import { EmptyState, Icon, IconButton, SectionHeader, TwoColumnGrid } from '@/components/ui';
 import { getCollectionProgress, getCollectionWords, getSuggestions, setWordSaved } from '@/db/queries';
@@ -30,6 +31,9 @@ export default function ExploreScreen() {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [kanjiWords, setKanjiWords] = useState<Word[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress>>({});
+  // AI lists for the first two sections (By Level stays on the built-in catalog).
+  const aiForYou = useAiSuggestions('forYou', dataVersion);
+  const aiKanji = useAiSuggestions('kanji', dataVersion);
 
   const load = useCallback(async () => {
     setSuggestions(await getSuggestions(db));
@@ -49,6 +53,13 @@ export default function ExploreScreen() {
 
   const save = async (word: Word) => {
     await setWordSaved(db, word.id, true);
+    load();
+  };
+
+  /** After saving an AI suggestion: refresh the ✓ marks and the rest of the page. */
+  const savedSuggestion = () => {
+    aiForYou.reload();
+    aiKanji.reload();
     load();
   };
 
@@ -77,9 +88,18 @@ export default function ExploreScreen() {
         contentContainerClassName="gap-4 pb-32 pt-3">
         <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.intro')}</Text>
 
-        {/* 1. For you */}
-        <SectionHeader title={t('explore.forYou')} />
-        {suggestions === null ? null : suggestions.length === 0 ? (
+        {/* 1. For you: from your library; the AI makes a fresh list on request */}
+        <SectionHeader
+          title={t('explore.forYou')}
+          right={<GenerateButton hasList={aiForYou.words !== null} generating={aiForYou.generating} onPress={aiForYou.generate} />}
+        />
+        {aiForYou.words !== null ? (
+          aiForYou.words.length > 0 ? (
+            <AiWordStrip words={aiForYou.words} savedKeys={aiForYou.savedKeys} onSaved={savedSuggestion} />
+          ) : (
+            <EmptyState icon="auto-awesome" message={t('explore.noneNew')} />
+          )
+        ) : suggestions === null ? null : suggestions.length === 0 ? (
           <EmptyState icon="celebration" message={t('explore.allSaved')} />
         ) : (
           suggestions.map((s, i) => (
@@ -88,21 +108,26 @@ export default function ExploreScreen() {
         )}
 
         {/* 2. Hard kanji words that are easy with Chinese */}
-        {kanjiWords.length > 0 ? (
+        <View className="mt-2">
+          <SectionHeader
+            title={t('explore.kanjiAdvantage')}
+            accent="mustard"
+            right={<GenerateButton hasList={aiKanji.words !== null} generating={aiKanji.generating} onPress={aiKanji.generate} />}
+          />
+        </View>
+        <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.kanjiAdvantageBody')}</Text>
+        {aiKanji.words !== null ? (
+          aiKanji.words.length > 0 ? (
+            <AiWordStrip words={aiKanji.words} savedKeys={aiKanji.savedKeys} onSaved={savedSuggestion} />
+          ) : (
+            <EmptyState icon="auto-awesome" message={t('explore.noneNew')} />
+          )
+        ) : kanjiWords.length > 0 ? (
           <>
-            <View className="mt-2">
-              <SectionHeader
-                title={t('explore.kanjiAdvantage')}
-                accent="mustard"
-                right={
-                  <Pressable accessibilityRole="link" hitSlop={8} onPress={() => open(KANJI_ADVANTAGE.id)}>
-                    <Text className="font-display-semibold text-[13px] text-primary">{t('explore.seeAll')}</Text>
-                  </Pressable>
-                }
-              />
-            </View>
-            <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.kanjiAdvantageBody')}</Text>
             <WordStrip words={kanjiWords} onSave={save} />
+            <Pressable accessibilityRole="link" hitSlop={8} onPress={() => open(KANJI_ADVANTAGE.id)} className="self-end px-1">
+              <Text className="font-display-semibold text-[13px] text-primary">{t('explore.seeAll')}</Text>
+            </Pressable>
           </>
         ) : null}
 

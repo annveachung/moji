@@ -80,6 +80,10 @@ const en = {
     quickAddHint: 'Save a word you met in anime, books or on the street.',
   },
   explore: {
+    generate: 'Generate with AI',
+    regenerate: 'New list',
+    generating: 'Generating…',
+    noneNew: 'No new words this time. Try again.',
     intro: 'Find new words, based on the ones you saved.',
     forYou: 'For you',
     sharesKanji: 'Shares a kanji with {{word}}',

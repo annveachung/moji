@@ -83,6 +83,10 @@ const zhTW: typeof en = {
     quickAddHint: '記下在動漫、書裡、街上遇到的日文。',
   },
   explore: {
+    generate: '用 AI 產生',
+    regenerate: '換一批',
+    generating: '產生中…',
+    noneNew: '這次沒有找到新單字，請再試一次。',
     intro: '根據你收藏的單字，發現新單字。',
     forYou: '為你推薦',
     sharesKanji: '和「{{word}}」共用漢字',

@@ -84,6 +84,10 @@ const ja: typeof en = {
     quickAddHint: 'アニメや本、街で出会った言葉を書き留めよう。',
   },
   explore: {
+    generate: 'AIで生成',
+    regenerate: '新しく生成',
+    generating: '生成中…',
+    noneNew: '新しい単語が見つかりませんでした。もう一度お試しください。',
     intro: '保存した単語をもとに、新しい単語を見つけよう。',
     forYou: 'あなたへのおすすめ',
     sharesKanji: '「{{word}}」と同じ漢字',
