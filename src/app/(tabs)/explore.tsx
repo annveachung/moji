@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { AiWordStrip, GenerateButton, useAiSuggestions } from '@/components/ai-suggestions';
+import { AiWordStrip, CardRow, GenerateButton, useAiSuggestions, WordCardFrame } from '@/components/ai-suggestions';
 import { AppHeader } from '@/components/app-header';
 import { EmptyState, Icon, IconButton, SectionHeader, TwoColumnGrid } from '@/components/ui';
 import { getCollectionProgress, getCollectionWords, getSavedWordKeys, setWordSaved } from '@/db/queries';
@@ -160,69 +160,28 @@ export default function ExploreScreen() {
   );
 }
 
-/**
- * A titled row of small word cards: it scrolls sideways on phones, and wraps into a grid
- * on wider screens (sideways scrolling is awkward with a mouse).
- */
+/** A titled row of catalog words (the same cards as the AI lists). */
 function WordStrip({ title, words, onSave }: { title?: string; words: Word[]; onSave: (word: Word) => void }) {
-  const { gutter, isCompact } = useLayout();
-  return (
-    <View className="gap-2">
-      {title ? <Text className="px-1 font-display-semibold text-[13px] text-ink-soft">{title}</Text> : null}
-      {!isCompact ? (
-        <View className="flex-row flex-wrap gap-3 pb-2">
-          {words.map((word) => (
-            <WordCard key={word.id} word={word} onSave={() => onSave(word)} />
-          ))}
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          // Let cards run edge to edge while lining up with the page's padding.
-          style={{ marginHorizontal: -gutter }}
-          contentContainerStyle={{ paddingHorizontal: gutter }}
-          contentContainerClassName="gap-3 pb-2">
-          {words.map((word) => (
-            <WordCard key={word.id} word={word} onSave={() => onSave(word)} />
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
-/** A small word card: tap to open, ＋ to save. */
-function WordCard({ word, onSave }: { word: Word; onSave: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { settings } = useSettings();
-  const kanaOnly = word.reading === word.word;
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${word.word} ${word.reading}`}
-      onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(word.id) } })}
-      className="w-[150px] justify-between gap-2 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
-      <View>
-        {settings.showFurigana && !kanaOnly ? (
-          <Text numberOfLines={1} className="text-[10px] font-semibold tracking-wider text-primary">
-            {word.reading}
-          </Text>
-        ) : null}
-        <Text numberOfLines={1} className="text-[22px] font-bold text-ink">
-          {word.word}
-        </Text>
-        <Text numberOfLines={2} className="text-[12px] leading-4 text-ink-soft">
-          {meaningFor(word, settings.meaningLanguage)}
-        </Text>
-      </View>
-      <View className="flex-row items-center justify-between">
-        <Text className="font-display text-[10px] text-ink-muted">{word.jlpt !== null ? `N${word.jlpt}` : ''}</Text>
-        <IconButton icon="add" tone="soft" size={30} label={t('explore.save')} onPress={onSave} />
-      </View>
-    </Pressable>
+    <View className="gap-2">
+      {title ? <Text className="px-1 font-display-semibold text-[13px] text-ink-soft">{title}</Text> : null}
+      <CardRow>
+        {words.map((word) => (
+          <WordCardFrame
+            key={word.id}
+            reading={word.reading}
+            word={word.word}
+            meaning={meaningFor(word, settings.meaningLanguage)}
+            jlpt={word.jlpt}
+            onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(word.id) } })}
+            action={<IconButton icon="add" tone="soft" size={30} label={t('explore.save')} onPress={() => onSave(word)} />}
+          />
+        ))}
+      </CardRow>
+    </View>
   );
 }
 

@@ -7,6 +7,7 @@ const en = {
     settings: 'Settings',
   },
   common: {
+    done: 'Done',
     otherTab: 'moji is open in another tab. Close it and moji will continue here.',
     back: 'Back',
     cancel: 'Cancel',
@@ -152,6 +153,9 @@ const en = {
   },
   essentials: {
     title: 'Everyday essentials',
+    examples: 'Examples',
+    generating: 'Writing example sentences…',
+    newExamples: 'New examples',
     saveError: 'Couldn’t save this word. Please try again.',
     auxiliary: 'Auxiliary verbs · 助動詞',
     auxiliaryBody: 'The endings that make a sentence work: polite or plain, negative, past, wanting, guessing.',

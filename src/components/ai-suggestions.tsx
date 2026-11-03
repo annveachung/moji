@@ -1,5 +1,5 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -23,7 +23,7 @@ import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
-import { Icon, IconButton } from './ui';
+import { Icon, IconButton, TwoColumnGrid } from './ui';
 
 /**
  * AI word suggestions for ことば (おすすめ and 漢字).
@@ -99,9 +99,30 @@ export function GenerateButton({ hasList, generating, onPress }: { hasList: bool
 }
 
 /**
- * AI-suggested words: a sideways row on phones, a wrapping grid on wider screens.
- * showReason: the AI's short note under the meaning (漢字 shows the matching Chinese word).
+ * A row of small word cards, all the same size: it scrolls sideways on phones, and is an
+ * even grid on wider screens (sideways scrolling is awkward with a mouse).
  */
+export function CardRow({ children }: { children: ReactNode[] }) {
+  const { gutter, size } = useLayout();
+  if (size !== 'compact') return <TwoColumnGrid columns={size === 'wide' ? 5 : 4}>{children}</TwoColumnGrid>;
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      // Let cards run edge to edge while lining up with the page's padding.
+      style={{ marginHorizontal: -gutter }}
+      contentContainerStyle={{ paddingHorizontal: gutter }}
+      contentContainerClassName="gap-3 pb-2">
+      {children.map((child, i) => (
+        <View key={i} className="w-[156px]">
+          {child}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+/** AI-suggested words. showReason: the AI's short note (漢字 shows the matching Chinese word). */
 export function AiWordStrip({
   words,
   savedKeys,
@@ -113,26 +134,18 @@ export function AiWordStrip({
   onSaved: () => void;
   showReason?: boolean;
 }) {
-  const { gutter, isCompact } = useLayout();
-  const cards = words.map((word) => (
-    <AiWordCard
-      key={word.word}
-      word={word}
-      saved={savedKeys.has(`${word.word}|${word.reading}`)}
-      onSaved={onSaved}
-      showReason={showReason}
-    />
-  ));
-  if (!isCompact) return <View className="flex-row flex-wrap gap-3 pb-2">{cards}</View>;
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ marginHorizontal: -gutter }}
-      contentContainerStyle={{ paddingHorizontal: gutter }}
-      contentContainerClassName="gap-3 pb-2">
-      {cards}
-    </ScrollView>
+    <CardRow>
+      {words.map((word) => (
+        <AiWordCard
+          key={word.word}
+          word={word}
+          saved={savedKeys.has(`${word.word}|${word.reading}`)}
+          onSaved={onSaved}
+          showReason={showReason}
+        />
+      ))}
+    </CardRow>
   );
 }
 
@@ -152,7 +165,6 @@ function AiWordCard({
   const { t } = useTranslation();
   const { settings } = useSettings();
   const [saving, setSaving] = useState(false);
-  const kanaOnly = word.reading === word.word;
 
   const save = async () => {
     setSaving(true);
@@ -173,32 +185,15 @@ function AiWordCard({
   };
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${word.word} ${word.reading}`}
+    <WordCardFrame
+      reading={word.reading}
+      word={word.word}
+      meaning={meaningFor(word, settings.meaningLanguage)}
+      note={showReason ? word.reason : undefined}
+      jlpt={word.jlpt > 0 ? word.jlpt : null}
       onPress={() => speakJapanese(word.reading)}
-      className="w-[150px] justify-between gap-2 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
-      <View>
-        {settings.showFurigana && !kanaOnly ? (
-          <Text numberOfLines={1} className="text-[10px] font-semibold tracking-wider text-primary">
-            {word.reading}
-          </Text>
-        ) : null}
-        <Text numberOfLines={1} className="text-[22px] font-bold text-ink">
-          {word.word}
-        </Text>
-        <Text numberOfLines={2} className="text-[12px] leading-4 text-ink-soft">
-          {meaningFor(word, settings.meaningLanguage)}
-        </Text>
-        {showReason && word.reason ? (
-          <Text numberOfLines={2} className="mt-1 text-[10px] leading-[13px] text-ink-muted">
-            {word.reason}
-          </Text>
-        ) : null}
-      </View>
-      <View className="flex-row items-center justify-between">
-        <Text className="font-display text-[10px] text-ink-muted">{word.jlpt > 0 ? `N${word.jlpt}` : ''}</Text>
-        {saving ? (
+      action={
+        saving ? (
           <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
         ) : saved ? (
           <View className="h-[30px] w-[30px] items-center justify-center rounded-full bg-matcha-soft">
@@ -206,7 +201,62 @@ function AiWordCard({
           </View>
         ) : (
           <IconButton icon="add" tone="soft" size={30} label={t('explore.save')} onPress={save} />
-        )}
+        )
+      }
+    />
+  );
+}
+
+/**
+ * The small word card used in ことば. Every part has a fixed place (reading line, word,
+ * two lines of meaning, an optional note, then level and button at the bottom), so cards
+ * side by side line up exactly.
+ */
+export function WordCardFrame({
+  reading,
+  word,
+  meaning,
+  note,
+  jlpt,
+  onPress,
+  action,
+}: {
+  reading: string;
+  word: string;
+  meaning: string;
+  note?: string;
+  jlpt: number | null;
+  onPress: () => void;
+  action: ReactNode;
+}) {
+  const { settings } = useSettings();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${word} ${reading}`}
+      onPress={onPress}
+      className="flex-1 gap-2 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
+      <View className="flex-1">
+        {settings.showFurigana ? (
+          <Text numberOfLines={1} className="h-[14px] text-[10px] font-semibold leading-[14px] tracking-wider text-primary">
+            {reading !== word ? reading : ''}
+          </Text>
+        ) : null}
+        <Text numberOfLines={1} adjustsFontSizeToFit className="text-[22px] font-bold leading-[30px] text-ink">
+          {word}
+        </Text>
+        <Text numberOfLines={2} className="h-8 text-[12px] leading-4 text-ink-soft">
+          {meaning}
+        </Text>
+        {note ? (
+          <Text numberOfLines={1} className="mt-1 text-[10px] leading-[13px] text-ink-muted">
+            {note}
+          </Text>
+        ) : null}
+      </View>
+      <View className="h-[30px] flex-row items-center justify-between">
+        <Text className="font-display text-[10px] text-ink-muted">{jlpt !== null ? `N${jlpt}` : ''}</Text>
+        {action}
       </View>
     </Pressable>
   );
