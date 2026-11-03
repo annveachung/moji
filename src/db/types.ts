@@ -143,13 +143,6 @@ export type CollectionFilter = {
   tag?: string;
 };
 
-/** A row of suggestions in 発見, with the reason it's suggested. */
-export type Suggestion =
-  | { kind: 'shared-kanji'; anchor: Word; words: Word[] }
-  | { kind: 'same-topic'; topic: Topic; words: Word[] }
-  | { kind: 'confusing'; anchor: Word; words: Word[] }
-  | { kind: 'starter'; words: Word[] };
-
 /** A grammar rule in 文法, e.g. 〜ても "even if". */
 export type GrammarRule = {
   id: number;

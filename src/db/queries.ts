@@ -14,7 +14,6 @@ import type {
   RelatedWord,
   RelationKind,
   Sentence,
-  Suggestion,
   Topic,
   VerbGroup,
   Word,
@@ -232,75 +231,6 @@ export async function getCollectionProgress(
     ...params,
   );
   return { saved: row?.saved ?? 0, total: row?.total ?? 0 };
-}
-
-/**
- * Suggestions for 発見, built from what's already in your library:
- * catalog words sharing a kanji with a word you saved, partners of words that
- * are easy to confuse, and more from the topic you save most. With an empty
- * library, it suggests easy starter words instead.
- */
-export async function getSuggestions(db: SQLiteDatabase): Promise<Suggestion[]> {
-  const suggestions: Suggestion[] = [];
-  const unsaved = 'saved_at IS NULL AND is_custom = 0';
-  const recent = await getRecentlyAdded(db, 12);
-
-  if (recent.length === 0) {
-    const rows = await db.getAllAsync<WordRow>(
-      `SELECT * FROM words WHERE ${unsaved} AND jlpt = 5 ORDER BY id LIMIT 8`,
-    );
-    return rows.length > 0 ? [{ kind: 'starter', words: rows.map(toWord) }] : [];
-  }
-
-  // Shared kanji: up to two of your recent words, each with up to 6 unsaved partners.
-  const shown = new Set<number>();
-  for (const anchor of recent) {
-    const kanji = kanjiIn(anchor.word);
-    if (kanji.length === 0) continue;
-    const rows = await db.getAllAsync<WordRow>(
-      `SELECT * FROM words WHERE ${unsaved} AND (${kanji.map(() => 'word LIKE ?').join(' OR ')}) LIMIT 6`,
-      ...kanji.map((k) => `%${k}%`),
-    );
-    const words = rows.map(toWord).filter((w) => !shown.has(w.id));
-    if (words.length === 0) continue;
-    words.forEach((w) => shown.add(w.id));
-    suggestions.push({ kind: 'shared-kanji', anchor, words });
-    if (suggestions.length === 2) break;
-  }
-
-  // Easily confused: a saved word whose confusing partner you haven't saved yet.
-  const pairs = await db.getAllAsync<WordRow & { anchor_id: number }>(
-    `SELECT other.*, saved.id AS anchor_id
-       FROM word_relations r
-       JOIN words saved ON saved.id IN (r.word_id, r.other_id) AND saved.saved_at IS NOT NULL
-       JOIN words other ON other.id IN (r.word_id, r.other_id) AND other.id != saved.id
-                       AND other.saved_at IS NULL
-      WHERE r.kind = 'confusing'
-      LIMIT 6`,
-  );
-  for (const row of pairs) {
-    if (shown.has(row.id)) continue;
-    const anchor = await getWord(db, row.anchor_id);
-    if (!anchor) continue;
-    shown.add(row.id);
-    suggestions.push({ kind: 'confusing', anchor, words: [toWord(row)] });
-  }
-  // Same topic: the topic you've saved the most words from.
-  const top = await db.getFirstAsync<{ topic: Topic }>(
-    `SELECT topic FROM words WHERE saved_at IS NOT NULL AND topic IS NOT NULL
-      GROUP BY topic ORDER BY COUNT(*) DESC LIMIT 1`,
-  );
-  if (top) {
-    const rows = await db.getAllAsync<WordRow>(
-      `SELECT * FROM words WHERE ${unsaved} AND topic = ? ORDER BY jlpt IS NULL, jlpt DESC, id LIMIT 8`,
-      top.topic,
-    );
-    const words = rows.map(toWord).filter((w) => !shown.has(w.id));
-    words.forEach((w) => shown.add(w.id));
-    if (words.length > 0) suggestions.push({ kind: 'same-topic', topic: top.topic, words });
-  }
-
-  return suggestions;
 }
 
 /** Add a catalog word to your library, or take it out (which also unstars it). */
