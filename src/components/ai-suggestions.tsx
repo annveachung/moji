@@ -26,7 +26,7 @@ import colors from '@/theme/colors';
 import { Icon, IconButton } from './ui';
 
 /**
- * AI word suggestions for ことば (あなたへのおすすめ and 漢字でわかる上級語).
+ * AI word suggestions for ことば (おすすめ and 漢字).
  * Generating asks moji-api for words you don't have yet and haven't just been shown;
  * the latest list is kept on this device, so it's still there next time you open the tab.
  */
@@ -38,6 +38,8 @@ export function useAiSuggestions(kind: SuggestionKind, dataVersion: number) {
   const [words, setWords] = useState<SuggestedWord[] | null>(null);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
+  // false until the stored list has been read (words is null both before that and when there's none).
+  const [loaded, setLoaded] = useState(false);
 
   const reload = useCallback(async () => {
     const stored = await getSetting(db, key);
@@ -47,13 +49,15 @@ export function useAiSuggestions(kind: SuggestionKind, dataVersion: number) {
       setWords(null);
     }
     setSavedKeys(await getSavedWordKeys(db));
+    setLoaded(true);
   }, [db, key, dataVersion]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
-  const generate = async () => {
+  /** quiet: no error message (the automatic first list; the button still says what went wrong). */
+  const generate = async ({ quiet = false }: { quiet?: boolean } = {}) => {
     setGenerating(true);
     try {
       const recent = await getRecentlyAdded(db, 40);
@@ -64,13 +68,13 @@ export function useAiSuggestions(kind: SuggestionKind, dataVersion: number) {
       await setSetting(db, key, JSON.stringify(fresh));
       setWords(fresh);
     } catch (error) {
-      showAlert(t('explore.generate'), aiErrorMessage(t, error));
+      if (!quiet) showAlert(t('explore.generate'), aiErrorMessage(t, error));
     } finally {
       setGenerating(false);
     }
   };
 
-  return { words, savedKeys, generating, generate, reload };
+  return { words, loaded, savedKeys, generating, generate, reload };
 }
 
 /** The "AIで生成 / 新しく生成" button in a section header. */
@@ -94,11 +98,30 @@ export function GenerateButton({ hasList, generating, onPress }: { hasList: bool
   );
 }
 
-/** AI-suggested words: a sideways row on phones, a wrapping grid on wider screens. */
-export function AiWordStrip({ words, savedKeys, onSaved }: { words: SuggestedWord[]; savedKeys: Set<string>; onSaved: () => void }) {
+/**
+ * AI-suggested words: a sideways row on phones, a wrapping grid on wider screens.
+ * showReason: the AI's short note under the meaning (漢字 shows the matching Chinese word).
+ */
+export function AiWordStrip({
+  words,
+  savedKeys,
+  onSaved,
+  showReason = false,
+}: {
+  words: SuggestedWord[];
+  savedKeys: Set<string>;
+  onSaved: () => void;
+  showReason?: boolean;
+}) {
   const { gutter, isCompact } = useLayout();
   const cards = words.map((word) => (
-    <AiWordCard key={word.word} word={word} saved={savedKeys.has(`${word.word}|${word.reading}`)} onSaved={onSaved} />
+    <AiWordCard
+      key={word.word}
+      word={word}
+      saved={savedKeys.has(`${word.word}|${word.reading}`)}
+      onSaved={onSaved}
+      showReason={showReason}
+    />
   ));
   if (!isCompact) return <View className="flex-row flex-wrap gap-3 pb-2">{cards}</View>;
   return (
@@ -114,7 +137,17 @@ export function AiWordStrip({ words, savedKeys, onSaved }: { words: SuggestedWor
 }
 
 /** One suggestion: tap to hear it, ＋ to save it (the AI fills in an example and a topic). */
-function AiWordCard({ word, saved, onSaved }: { word: SuggestedWord; saved: boolean; onSaved: () => void }) {
+function AiWordCard({
+  word,
+  saved,
+  onSaved,
+  showReason,
+}: {
+  word: SuggestedWord;
+  saved: boolean;
+  onSaved: () => void;
+  showReason: boolean;
+}) {
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -157,7 +190,7 @@ function AiWordCard({ word, saved, onSaved }: { word: SuggestedWord; saved: bool
         <Text numberOfLines={2} className="text-[12px] leading-4 text-ink-soft">
           {meaningFor(word, settings.meaningLanguage)}
         </Text>
-        {word.reason ? (
+        {showReason && word.reason ? (
           <Text numberOfLines={2} className="mt-1 text-[10px] leading-[13px] text-ink-muted">
             {word.reason}
           </Text>
