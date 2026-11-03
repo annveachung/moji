@@ -19,8 +19,8 @@ import colors from '@/theme/colors';
 type Progress = { saved: number; total: number };
 
 /**
- * 発見: suggestions grown from your library, hard kanji words that are easy for
- * Chinese speakers, and the catalog by JLPT level. One tap saves a word.
+ * 発見: おすすめ (suggestions grown from your library), 漢字 (kanji words you can read
+ * through Chinese), and the catalog by JLPT level. One tap saves a word.
  */
 export default function ExploreScreen() {
   const db = useSQLiteContext();
@@ -107,7 +107,7 @@ export default function ExploreScreen() {
           ))
         )}
 
-        {/* 2. Hard kanji words that are easy with Chinese */}
+        {/* 2. 漢字: kanji words you can read through Chinese */}
         <View className="mt-2">
           <SectionHeader
             title={t('explore.kanjiAdvantage')}
@@ -115,7 +115,6 @@ export default function ExploreScreen() {
             right={<GenerateButton hasList={aiKanji.words !== null} generating={aiKanji.generating} onPress={aiKanji.generate} />}
           />
         </View>
-        <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.kanjiAdvantageBody')}</Text>
         {aiKanji.words !== null ? (
           aiKanji.words.length > 0 ? (
             <AiWordStrip words={aiKanji.words} savedKeys={aiKanji.savedKeys} onSaved={savedSuggestion} />

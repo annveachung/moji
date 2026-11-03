@@ -25,7 +25,7 @@ export const LEVELS: { level: JlptLevel; collection: Collection }[] = ([5, 4, 3,
 }));
 
 /**
- * Hard (N3–N1) words written entirely in kanji whose meaning a Chinese speaker can
+ * N3–N1 words written entirely in kanji whose meaning a Chinese speaker can
  * usually guess, e.g. 観光, 経験, 冒険. False friends are left out, since there the
  * Chinese meaning misleads.
  */
