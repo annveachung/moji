@@ -11,6 +11,7 @@ const ja: typeof en = {
     settings: '設定',
   },
   common: {
+    done: '完了',
     otherTab: 'mojiは別のタブで開いています。そのタブを閉じると、ここで続けられます。',
     back: '戻る',
     cancel: 'キャンセル',
@@ -156,6 +157,9 @@ const ja: typeof en = {
   },
   essentials: {
     title: '基本のことば',
+    examples: '例文',
+    generating: '例文を作成中…',
+    newExamples: '別の例文',
     saveError: '保存できませんでした。もう一度お試しください。',
     auxiliary: '助動詞（じょどうし）',
     auxiliaryBody: '文を作る基本の形：丁寧・普通、否定、過去、希望、推量など。',

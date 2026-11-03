@@ -68,6 +68,17 @@ export function generateGrammarSentence(rule: {
   return apiFetch<AiSentence>('/ai/grammar-sentence', { method: 'POST', body: rule });
 }
 
+/** Three example sentences for a word (furigana markup, the word in {braces}). */
+export async function generateWordSentences(word: {
+  word: string;
+  reading: string;
+  meaning: string;
+  avoid: string[];
+}): Promise<AiSentence[]> {
+  const { sentences } = await apiFetch<{ sentences: AiSentence[] }>('/ai/word-sentences', { method: 'POST', body: word });
+  return sentences;
+}
+
 /** Categories for words still in その他. */
 export async function sortCategories(
   words: { uid: string; word: string; reading: string; meaning: string }[],

@@ -10,6 +10,7 @@ const zhTW: typeof en = {
     settings: '設定',
   },
   common: {
+    done: '完成',
     otherTab: 'moji 已在另一個分頁開啟。關掉那個分頁後，就會在這裡繼續。',
     back: '返回',
     cancel: '取消',
@@ -155,6 +156,9 @@ const zhTW: typeof en = {
   },
   essentials: {
     title: '基本詞彙',
+    examples: '例句',
+    generating: '例句產生中…',
+    newExamples: '換一批例句',
     saveError: '無法儲存這個單字，請再試一次。',
     auxiliary: '助動詞（じょどうし）',
     auxiliaryBody: '構成句子的基本詞尾：禮貌／常體、否定、過去、想要、推測等。',
