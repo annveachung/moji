@@ -12,7 +12,7 @@ import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 import { FuriganaText } from './furigana-text';
-import { Icon, IconButton, Pill, type PillTone } from './ui';
+import { Icon, IconButton, Pill, TagRow, type PillTone } from './ui';
 
 type Props = { word: LibraryWord; onToggleStar: () => void };
 
@@ -22,15 +22,24 @@ function TagPill({
   tone,
   active,
   onPress,
+  maxWidth,
 }: {
   label: string;
   tone: PillTone;
   active: boolean;
   onPress: () => void;
+  /** From TagRow, when this tag reaches the edge of the card. */
+  maxWidth?: number;
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} hitSlop={4} onPress={onPress}>
-      <Pill label={label} tone={active ? 'primary' : tone} icon={active ? 'filter-alt' : undefined} />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      hitSlop={4}
+      onPress={onPress}
+      style={maxWidth !== undefined ? { maxWidth } : undefined}>
+      <Pill label={label} tone={active ? 'primary' : tone} icon={active ? 'filter-alt' : undefined} maxWidth={maxWidth} />
     </Pressable>
   );
 }
@@ -67,7 +76,8 @@ export function LibraryCard({
       onPress={open}
       className="gap-3 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
       <View className="flex-row items-center justify-between gap-2">
-        <View className="flex-1 flex-row flex-wrap gap-1.5">
+        {/* One row of tags on every card; the one at the edge is cut short ("Technology and…"). */}
+        <TagRow>
           {word.jlpt !== null ? (
             <TagPill
               label={`JLPT N${word.jlpt}`}
@@ -96,7 +106,7 @@ export function LibraryCard({
               onFilter({ topic: filters.topic === topic ? null : topic });
             }}
           />
-        </View>
+        </TagRow>
         <View className="flex-row items-center gap-1.5">
           <StatusBadge word={word} />
           <IconButton
