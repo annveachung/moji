@@ -1,5 +1,14 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Children, useEffect, type ComponentProps, type ReactNode } from 'react';
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useState,
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -46,16 +55,90 @@ export function Pill({
   label,
   tone = 'neutral',
   icon,
+  maxWidth,
 }: {
   label: string;
   tone?: PillTone;
   icon?: IconName;
+  /** Cut the label short with an ellipsis to fit this width (TagRow sets it). */
+  maxWidth?: number;
 }) {
   const style = PILL_TONES[tone];
   return (
-    <View className={`flex-row items-center gap-1 self-start rounded-full px-2.5 py-1 ${style.box}`}>
+    <View
+      className={`flex-row items-center gap-1 self-start rounded-full px-2.5 py-1 ${style.box}`}
+      style={maxWidth !== undefined ? { maxWidth } : undefined}>
       {icon && <Icon name={icon} size={12} color={style.icon} />}
-      <Text className={`font-display text-[11px] tracking-wide ${style.text}`}>{label}</Text>
+      <Text
+        numberOfLines={1}
+        className={`font-display text-[11px] tracking-wide ${style.text}`}
+        style={maxWidth !== undefined ? { flexShrink: 1 } : undefined}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/** Narrower than this, a cut-off tag says too little ("T…"), so it's left out instead. */
+const MIN_CUT_TAG = 56;
+
+/**
+ * A single row of tags. The tag that reaches the edge is cut short with an ellipsis
+ * ("Technology and…") and any after it are left out, so every card has one tidy row.
+ * Each tag is measured off-screen at its natural width to work out where the row ends.
+ * Children receive a `maxWidth` prop when they need cutting (Pill and TagPill accept it).
+ */
+export function TagRow({ children, gap = 6 }: { children: ReactNode; gap?: number }) {
+  const items = Children.toArray(children);
+  const [rowWidth, setRowWidth] = useState(0);
+  const [widths, setWidths] = useState<number[]>([]);
+  const measured = rowWidth > 0 && items.every((_, i) => (widths[i] ?? 0) > 0);
+
+  // Whole tags while they fit; then the next one, cut to the room that's left.
+  const visible: ReactNode[] = [];
+  let used = 0;
+  for (let i = 0; i < items.length; i++) {
+    const start = used + (i > 0 ? gap : 0);
+    const width = widths[i] ?? 0;
+    if (!measured || start + width <= rowWidth) {
+      visible.push(items[i]);
+      used = start + width;
+      continue;
+    }
+    const room = rowWidth - start;
+    if (room >= MIN_CUT_TAG && isValidElement(items[i])) {
+      visible.push(cloneElement(items[i] as ReactElement<{ maxWidth?: number }>, { maxWidth: room }));
+    }
+    break;
+  }
+
+  return (
+    <View className="min-w-0 flex-1" onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
+      {/* Off-screen copies at full width, for measuring. */}
+      <View
+        pointerEvents="none"
+        aria-hidden
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ position: 'absolute', left: 0, top: 0, width: 4000, flexDirection: 'row', alignItems: 'flex-start', opacity: 0 }}>
+        {items.map((item, i) => (
+          <View
+            key={i}
+            style={{ flexShrink: 0 }}
+            onLayout={(e) => {
+              const width = e.nativeEvent.layout.width;
+              setWidths((current) => {
+                if (current[i] === width) return current;
+                const next = [...current];
+                next[i] = width;
+                return next;
+              });
+            }}>
+            {item}
+          </View>
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap, opacity: measured ? 1 : 0 }}>{visible}</View>
     </View>
   );
 }
