@@ -70,6 +70,7 @@ function AppStack() {
         <Stack.Screen name="word/[id]" />
         <Stack.Screen name="grammar/[id]" />
         <Stack.Screen name="collection/[id]" />
+        <Stack.Screen name="essentials/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut'}>
         <Stack.Screen name="sign-in" />
