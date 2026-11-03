@@ -7,9 +7,10 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { AiWordStrip, GenerateButton, useAiSuggestions } from '@/components/ai-suggestions';
 import { AppHeader } from '@/components/app-header';
 import { EmptyState, Icon, IconButton, SectionHeader, TwoColumnGrid } from '@/components/ui';
-import { getCollectionProgress, getCollectionWords, setWordSaved } from '@/db/queries';
+import { getCollectionProgress, getCollectionWords, getSavedWordKeys, setWordSaved } from '@/db/queries';
 import type { Word } from '@/db/types';
 import { KANJI_ADVANTAGE, LEVELS } from '@/lib/collections';
+import { ESSENTIALS, essentialKey, type EssentialGroup } from '@/lib/essentials';
 import { meaningFor } from '@/lib/meaning';
 import { useSettings } from '@/state/settings';
 import { useLayout } from '@/lib/layout';
@@ -20,7 +21,8 @@ type Progress = { saved: number; total: number };
 
 /**
  * 発見: おすすめ (an AI list of useful words, from news, books and daily life, pitched at your
- * level), 漢字 (kanji words you can read through Chinese), and the catalog by JLPT level. One tap saves a word.
+ * level), 漢字 (kanji words you can read through Chinese), 基本のことば (fixed lists of everyday
+ * function words and counting) and the catalog by JLPT level. One tap saves a word.
  */
 export default function ExploreScreen() {
   const db = useSQLiteContext();
@@ -30,6 +32,7 @@ export default function ExploreScreen() {
   const layout = useLayout();
   const [kanjiWords, setKanjiWords] = useState<Word[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress>>({});
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   // AI lists for the first two sections (By Level stays on the built-in catalog).
   const aiForYou = useAiSuggestions('forYou', dataVersion);
   const aiKanji = useAiSuggestions('kanji', dataVersion);
@@ -41,6 +44,7 @@ export default function ExploreScreen() {
       LEVELS.map(async ({ collection }) => [collection.id, await getCollectionProgress(db, collection.filter)]),
     );
     setProgress(Object.fromEntries(entries));
+    setSavedKeys(await getSavedWordKeys(db));
   }, [db, dataVersion]);
 
   useFocusEffect(
@@ -119,7 +123,22 @@ export default function ExploreScreen() {
           </>
         ) : null}
 
-        {/* 3. By JLPT level, N5 → N1 */}
+        {/* 3. 基本のことば: fixed lists of function words and counting */}
+        <View className="mt-2">
+          <SectionHeader title={t('essentials.title')} accent="primary" />
+        </View>
+        <TwoColumnGrid columns={layout.size === 'wide' ? 4 : layout.size === 'medium' ? 3 : 2}>
+          {ESSENTIALS.map((group) => (
+            <EssentialCard
+              key={group.id}
+              group={group}
+              saved={group.words.filter((w) => savedKeys.has(essentialKey(w))).length}
+              onPress={() => router.push({ pathname: '/essentials/[id]', params: { id: group.id } })}
+            />
+          ))}
+        </TwoColumnGrid>
+
+        {/* 4. By JLPT level, N5 → N1 */}
         <View className="mt-2">
           <SectionHeader title={t('explore.levels')} accent="matcha" />
         </View>
@@ -245,6 +264,37 @@ function LevelCard({
         </View>
         <Text className="font-display-medium text-[11px] text-ink-muted">
           {progress ? t('explore.progress', { saved: progress.saved, total: progress.total }) : ' '}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/** One 基本のことば group: its name, the first few words and how many you've saved. */
+function EssentialCard({ group, saved, onPress }: { group: EssentialGroup; saved: number; onPress: () => void }) {
+  const { t } = useTranslation();
+  const ratio = saved / group.words.length;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className="flex-1 gap-2 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
+      <View className="flex-row items-center justify-between">
+        <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-soft">
+          <Icon name={group.icon} size={20} color={colors.primary.DEFAULT} />
+        </View>
+        <Icon name="chevron-right" size={20} color={colors.ink.muted} />
+      </View>
+      <Text className="font-display text-[14px] text-ink">{t(`essentials.${group.id}`)}</Text>
+      <Text numberOfLines={1} className="text-[12px] leading-4 text-ink-soft">
+        {group.words.slice(0, 4).map((w) => w.word).join('、')}…
+      </Text>
+      <View className="mt-auto gap-1">
+        <View className="h-1.5 overflow-hidden rounded-full bg-surface-high">
+          <View className="h-full rounded-full bg-primary" style={{ width: `${Math.round(ratio * 100)}%` }} />
+        </View>
+        <Text className="font-display-medium text-[11px] text-ink-muted">
+          {t('explore.progress', { saved, total: group.words.length })}
         </Text>
       </View>
     </Pressable>
