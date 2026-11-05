@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout, type PageKind } from '@/lib/layout';
 
+import { Mascot } from './mascot';
 import { Icon } from './ui';
 
 /**
@@ -55,7 +56,8 @@ export function AppHeader({
             </Text>
           ) : (
             <View className="flex-1">
-              <View className="flex-row items-baseline gap-1.5">
+              <View className="flex-row items-center gap-1.5">
+                <Mascot size={20} />
                 <Text className="font-display text-[20px] leading-6 text-ink">moji</Text>
                 <Text className="text-[12px] font-bold text-primary">文字</Text>
               </View>

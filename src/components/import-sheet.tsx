@@ -78,7 +78,7 @@ export function ImportSheet({
           contentContainerClassName="gap-4 py-4"
           contentContainerStyle={{ ...layout.page('reading'), paddingBottom: insets.bottom + 32 }}>
           {review.fresh.length === 0 && review.duplicates.length === 0 ? (
-            <EmptyState icon="inbox" message={t('importing.nothing')} />
+            <EmptyState message={t('importing.nothing')} />
           ) : null}
 
           {review.fresh.length > 0 ? (

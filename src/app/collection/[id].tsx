@@ -67,7 +67,7 @@ export default function CollectionScreen() {
       <View className="flex-1 bg-surface">
         <AppHeader subtitle={t('nav.explore')} back kind="reading" />
         <View className="p-4">
-          <EmptyState icon="search-off" message={t('explore.empty')} />
+          <EmptyState message={t('explore.empty')} />
         </View>
       </View>
     );
@@ -108,7 +108,7 @@ export default function CollectionScreen() {
             {body ? <Text className="text-[13px] leading-5 text-ink-soft">{body}</Text> : null}
           </View>
         }
-        ListEmptyComponent={words !== null ? <EmptyState icon="inbox" message={t('explore.empty')} /> : undefined}
+        ListEmptyComponent={words !== null ? <EmptyState message={t('explore.empty')} /> : undefined}
         renderSectionHeader={({ section }) => {
           const expanded = open.has(section.category);
           return (

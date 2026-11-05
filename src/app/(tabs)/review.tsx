@@ -6,6 +6,7 @@ import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { LibraryCard } from '@/components/library-card';
+import { StarButton } from '@/components/mascot';
 import { Chip, EmptyState, IconButton, Pill, StampButton } from '@/components/ui';
 import { WordFilters } from '@/components/word-filters';
 import { getStarredGrammar, setGrammarStarred } from '@/db/grammar';
@@ -114,11 +115,10 @@ export default function ReviewScreen() {
           items !== null ? (
             <View className="items-center gap-3">
               {(section === 'words' && filtering) || (section === 'grammar' && (grammarLevel !== null || grammarFn !== null)) ? (
-                <EmptyState icon="search-off" message={t('library.noResults')} />
+                <EmptyState message={t('library.noResults')} />
               ) : (
                 <>
                   <EmptyState
-                    icon="star-border"
                     message={section === 'words' ? t('review.wordsEmpty') : t('review.grammarEmpty')}
                   />
                   <StampButton
@@ -227,7 +227,7 @@ function StarredRule({
             />
           </Pressable>
         ) : null}
-        <IconButton icon="star" tone="star" size={34} label={t('review.unstar')} onPress={onUnstar} />
+        <StarButton starred size={34} label={t('review.unstar')} onPress={onUnstar} />
       </View>
       <Text className="text-[15px] font-semibold leading-5 text-ink">{meaningFor(rule, settings.meaningLanguage)}</Text>
       <View className="flex-row flex-wrap items-center gap-1.5">

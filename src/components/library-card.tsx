@@ -12,6 +12,7 @@ import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 import { FuriganaText } from './furigana-text';
+import { Mascot, StarButton } from './mascot';
 import { Icon, IconButton, Pill, TagRow, type PillTone } from './ui';
 
 type Props = { word: LibraryWord; onToggleStar: () => void };
@@ -109,9 +110,8 @@ export function LibraryCard({
         </TagRow>
         <View className="flex-row items-center gap-1.5">
           <StatusBadge word={word} />
-          <IconButton
-            icon={word.starredAt ? 'star' : 'star-border'}
-            tone={word.starredAt ? 'star' : 'quiet'}
+          <StarButton
+            starred={Boolean(word.starredAt)}
             size={32}
             label={word.starredAt ? t('word.starred') : t('word.star')}
             onPress={onToggleStar}
@@ -189,11 +189,7 @@ export function LibraryTile({ word, onToggleStar }: Props) {
           accessibilityLabel={word.starredAt ? t('word.starred') : t('word.star')}
           hitSlop={10}
           onPress={onToggleStar}>
-          <Icon
-            name={word.starredAt ? 'star' : 'star-border'}
-            size={20}
-            color={word.starredAt ? colors.mustard.DEFAULT : colors.ink.muted}
-          />
+          <Mascot size={20} tone={word.starredAt ? 'color' : 'faded'} />
         </Pressable>
       </View>
       <Text numberOfLines={1} className="text-[12px] text-ink-soft">

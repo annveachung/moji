@@ -123,8 +123,6 @@ const zhTW: typeof en = {
     gridView: '格狀檢視',
     lastReviewed: '{{when}}複習',
     added: '{{when}}新增',
-    quote: 'ことばは旅の杖',
-    quoteMeaning: '語言是旅途中的手杖，繼續收集吧！',
     allPos: '全部詞性',
     allJlpt: '全部級數',
     count_one: '{{count}} 個單字',

@@ -7,6 +7,7 @@ import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-na
 import { AppHeader } from '@/components/app-header';
 import { DailyReading } from '@/components/daily-reading';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
+import { StarButton } from '@/components/mascot';
 import { Card, Chip, EmptyState, Icon, IconButton, Pill, SectionHeader, type IconName } from '@/components/ui';
 import {
   applyGrammarImport,
@@ -192,7 +193,6 @@ export default function GrammarScreen() {
         ListEmptyComponent={
           rules !== null ? (
             <EmptyState
-              icon={filtering ? 'search-off' : 'auto-stories'}
               message={filtering ? t('grammar.noResults') : t('grammar.empty')}
             />
           ) : undefined
@@ -235,9 +235,8 @@ function GrammarCard({
       <View className="flex-row items-start justify-between gap-2">
         <Text className="flex-1 text-[22px] font-bold leading-7 text-ink">{rule.pattern}</Text>
         {rule.jlpt !== null ? <Pill label={`N${rule.jlpt}`} tone="mustard" /> : null}
-        <IconButton
-          icon={rule.starredAt ? 'star' : 'star-border'}
-          tone={rule.starredAt ? 'star' : 'quiet'}
+        <StarButton
+          starred={Boolean(rule.starredAt)}
           size={32}
           label={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
           onPress={onToggleStar}

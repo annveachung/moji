@@ -16,6 +16,7 @@ import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
 import { FuriganaText } from './furigana-text';
+import { Mascot } from './mascot';
 import { Icon, Pill } from './ui';
 
 /**
@@ -78,7 +79,7 @@ export function QuickAdd({ onAdded }: { onAdded: () => void }) {
   return (
     <View className="gap-2">
       <View className="flex-row items-center gap-2 rounded-card bg-card p-2 pl-4 shadow-md shadow-ink/10">
-        <Icon name="auto-awesome" size={20} color={colors.primary.DEFAULT} />
+        <Mascot size={24} />
         <TextInput
           value={text}
           onChangeText={setText}
