@@ -47,7 +47,7 @@ export default function EssentialsScreen() {
       <View className="flex-1 bg-surface">
         <AppHeader subtitle={t('nav.explore')} back kind="reading" />
         <View className="p-4">
-          <EmptyState icon="search-off" message={t('explore.empty')} />
+          <EmptyState message={t('explore.empty')} />
         </View>
       </View>
     );

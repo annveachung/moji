@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { CategoryPicker } from '@/components/category-picker';
+import { StarButton } from '@/components/mascot';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton } from '@/components/ui';
 import {
   deleteGrammarSentence,
@@ -78,7 +79,7 @@ export default function GrammarDetailScreen() {
       <View className="flex-1 bg-surface">
         <AppHeader subtitle={t('grammar.title')} back kind="reading" />
         <View className="p-4">
-          <EmptyState icon="search-off" message={t('grammar.notFound')} />
+          <EmptyState message={t('grammar.notFound')} />
         </View>
       </View>
     );
@@ -153,9 +154,8 @@ export default function GrammarDetailScreen() {
               </Pressable>
             </View>
             <View className="flex-row items-center gap-2">
-              <IconButton
-                icon={rule.starredAt ? 'star' : 'star-border'}
-                tone={rule.starredAt ? 'star' : 'quiet'}
+              <StarButton
+                starred={Boolean(rule.starredAt)}
                 size={36}
                 label={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
                 onPress={async () => {
@@ -199,7 +199,7 @@ export default function GrammarDetailScreen() {
             title={t('grammar.examples')}
             right={<Text className="text-[11px] text-ink-muted">{t('grammar.sentences', { count: sentences.length })}</Text>}
           />
-          {sentences.length === 0 ? <EmptyState icon="format-quote" message={t('grammar.examplesEmpty')} /> : null}
+          {sentences.length === 0 ? <EmptyState message={t('grammar.examplesEmpty')} /> : null}
           {sentences.map((sentence) => (
             <View key={sentence.id} className="gap-1.5 rounded-2xl bg-surface-low p-3">
               <View className="flex-row items-start justify-between gap-2">

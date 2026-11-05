@@ -124,8 +124,6 @@ const ja: typeof en = {
     gridView: 'グリッド表示',
     lastReviewed: '{{when}}に復習',
     added: '{{when}}に追加',
-    quote: 'ことばは旅の杖',
-    quoteMeaning: '言葉は旅を支える杖。これからも集めていこう！',
     allPos: '全品詞',
     allJlpt: '全レベル',
     count_one: '{{count}}語',

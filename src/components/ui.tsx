@@ -14,6 +14,8 @@ import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTimin
 
 import colors from '@/theme/colors';
 
+import { Mascot } from './mascot';
+
 /**
  * Small building blocks shared by every screen, so the design stays consistent.
  * Style (Kotoba Washi Minimal): white cards with soft shadows on warm washi paper,
@@ -250,10 +252,11 @@ export function SectionHeader({
 }
 
 /** Friendly message for a section that has nothing to show yet. */
-export function EmptyState({ icon, message }: { icon: IconName; message: string }) {
+/** A friendly note where a list is empty, with the moji mascot. */
+export function EmptyState({ message }: { message: string }) {
   return (
     <View className="flex-row items-center gap-3 rounded-2xl bg-surface-low p-4">
-      <Icon name={icon} size={22} color={colors.ink.muted} />
+      <Mascot size={26} />
       <Text className="flex-1 text-[13px] leading-5 text-ink-soft">{message}</Text>
     </View>
   );

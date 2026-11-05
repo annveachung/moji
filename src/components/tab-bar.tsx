@@ -9,6 +9,7 @@ import { useAuth } from '@/state/auth';
 import colors from '@/theme/colors';
 
 import { Icon, type IconName } from './ui';
+import { Mascot } from './mascot';
 
 const TABS: Record<string, { icon: IconName; label: string }> = {
   index: { icon: 'menu-book', label: 'nav.library' },
@@ -86,8 +87,8 @@ function Sidebar({ tabs, expanded }: { tabs: Tab[]; expanded: boolean }) {
       className={`border-r border-ink/10 bg-surface-low ${expanded ? 'px-4' : 'items-center px-2'}`}>
       {/* moji */}
       <View className={`mb-8 flex-row items-center gap-3 ${expanded ? 'px-2' : ''}`}>
-        <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-primary">
-          <Text className="text-[20px] font-bold text-white">文</Text>
+        <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-primary-soft">
+          <Mascot size={28} />
         </View>
         {expanded ? (
           <View className="flex-row items-baseline gap-1.5">

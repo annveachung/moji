@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AiWordStrip, CardRow, GenerateButton, useAiSuggestions, WordCardFrame } from '@/components/ai-suggestions';
 import { AppHeader } from '@/components/app-header';
+import { WalkingMascot } from '@/components/mascot';
 import { EmptyState, Icon, IconButton, SectionHeader, TwoColumnGrid } from '@/components/ui';
 import { getCollectionProgress, getCollectionWords, getSavedWordKeys, setWordSaved } from '@/db/queries';
 import type { Word } from '@/db/types';
@@ -94,10 +95,10 @@ export default function ExploreScreen() {
           aiForYou.words.length > 0 ? (
             <AiWordStrip words={aiForYou.words} savedKeys={aiForYou.savedKeys} onSaved={savedSuggestion} />
           ) : (
-            <EmptyState icon="auto-awesome" message={t('explore.noneNew')} />
+            <EmptyState message={t('explore.noneNew')} />
           )
         ) : aiForYou.loaded && !aiForYou.generating ? (
-          <EmptyState icon="auto-awesome" message={t('explore.forYouEmpty')} />
+          <EmptyState message={t('explore.forYouEmpty')} />
         ) : null}
 
         {/* 2. 漢字: kanji words you can read through Chinese */}
@@ -112,7 +113,7 @@ export default function ExploreScreen() {
           aiKanji.words.length > 0 ? (
             <AiWordStrip words={aiKanji.words} savedKeys={aiKanji.savedKeys} onSaved={savedSuggestion} showReason />
           ) : (
-            <EmptyState icon="auto-awesome" message={t('explore.noneNew')} />
+            <EmptyState message={t('explore.noneNew')} />
           )
         ) : kanjiWords.length > 0 ? (
           <>
@@ -155,6 +156,7 @@ export default function ExploreScreen() {
             />
           ))}
         </TwoColumnGrid>
+        <WalkingMascot />
       </ScrollView>
     </View>
   );

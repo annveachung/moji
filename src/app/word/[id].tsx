@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/app-header';
 import { CategoryPicker } from '@/components/category-picker';
 import { FuriganaText } from '@/components/furigana-text';
+import { StarButton } from '@/components/mascot';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
 import {
   countUnseenSentences,
@@ -94,7 +95,7 @@ export default function WordDetailScreen() {
       <View className="flex-1 bg-surface">
         <AppHeader subtitle={t('word.title')} back kind="reading" />
         <View className="p-4">
-          <EmptyState icon="search-off" message={t('word.notFound')} />
+          <EmptyState message={t('word.notFound')} />
         </View>
       </View>
     );
@@ -178,9 +179,8 @@ export default function WordDetailScreen() {
                 on={settings.showFurigana}
                 onPress={() => updateSettings({ showFurigana: !settings.showFurigana })}
               />
-              <IconButton
-                icon={word.starredAt ? 'star' : 'star-border'}
-                tone={word.starredAt ? 'star' : 'quiet'}
+              <StarButton
+                starred={Boolean(word.starredAt)}
                 size={34}
                 label={word.starredAt ? t('word.starred') : t('word.star')}
                 onPress={toggleStar}
@@ -281,7 +281,7 @@ export default function WordDetailScreen() {
               </Text>
             }
           />
-          {sentences.length === 0 && <EmptyState icon="auto-stories" message={t('word.examplesEmpty')} />}
+          {sentences.length === 0 && <EmptyState message={t('word.examplesEmpty')} />}
           {sentences.map((sentence) => (
             <View key={sentence.id} className="gap-2 rounded-2xl bg-surface-low p-3">
               <View className="flex-row items-start justify-between gap-2">
@@ -302,9 +302,8 @@ export default function WordDetailScreen() {
                     label={t('word.listen')}
                     onPress={() => speakJapanese(furiganaToReading(sentence.ja), speed)}
                   />
-                  <IconButton
-                    icon={sentence.favorite ? 'star' : 'star-border'}
-                    tone={sentence.favorite ? 'star' : 'quiet'}
+                  <StarButton
+                    starred={Boolean(sentence.favorite)}
                     size={32}
                     label={t('word.favorite')}
                     onPress={() => toggleFavorite(sentence)}
@@ -331,7 +330,7 @@ export default function WordDetailScreen() {
         <Card>
           <SectionHeader title={t('word.relatedTitle')} />
           {groups.length === 0 ? (
-            <EmptyState icon="hub" message={t('word.relatedEmpty')} />
+            <EmptyState message={t('word.relatedEmpty')} />
           ) : (
             <TwoColumnGrid gap={10}>
               {groups.map((group) => (

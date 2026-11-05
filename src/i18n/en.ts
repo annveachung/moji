@@ -120,8 +120,6 @@ const en = {
     gridView: 'Grid view',
     lastReviewed: 'Reviewed {{when}}',
     added: 'Added {{when}}',
-    quote: 'ことばは旅の杖',
-    quoteMeaning: 'Words are walking sticks for your journey. Keep collecting!',
     allPos: 'All types',
     allJlpt: 'All levels',
     count_one: '{{count}} word',

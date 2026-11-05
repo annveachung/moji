@@ -6,6 +6,7 @@ import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
+import { WalkingMascot } from '@/components/mascot';
 import { QuickAdd } from '@/components/quick-add';
 import { WordFilters } from '@/components/word-filters';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
@@ -216,7 +217,6 @@ export default function LibraryScreen() {
         ListEmptyComponent={
           words !== null ? (
             <EmptyState
-              icon={filtering ? 'search-off' : 'auto-stories'}
               message={filtering ? t('library.noResults') : t('library.empty')}
             />
           ) : undefined
@@ -230,15 +230,7 @@ export default function LibraryScreen() {
             )}
           </View>
         )}
-        ListFooterComponent={
-          words !== null && words.length > 0 && !filtering ? (
-            <View className="items-center gap-1 py-6">
-              <Icon name="menu-book" size={18} color={colors.primary.DEFAULT} />
-              <Text className="text-[17px] font-bold text-ink">{t('library.quote')}</Text>
-              <Text className="max-w-[280px] text-center text-[12px] text-ink-soft">{t('library.quoteMeaning')}</Text>
-            </View>
-          ) : undefined
-        }
+        ListFooterComponent={words !== null && words.length > 0 ? <WalkingMascot /> : undefined}
       />
     </View>
   );
