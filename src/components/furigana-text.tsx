@@ -18,6 +18,8 @@ type Props = {
   containerClassName?: string;
   /** Classes for the small reading above the kanji. */
   rubyClassName?: string;
+  /** Without furigana only: cut the text to this many lines, ending in "…". */
+  numberOfLines?: number;
 };
 
 /**
@@ -34,6 +36,7 @@ export function FuriganaText({
   hideTarget = false,
   containerClassName = '',
   rubyClassName = 'text-primary',
+  numberOfLines,
 }: Props) {
   const rubySize = Math.round(size * 0.5);
   const segments = parseFurigana(markup);
@@ -50,6 +53,7 @@ export function FuriganaText({
   if (!showFurigana) {
     return (
       <Text
+        numberOfLines={numberOfLines}
         className={`${className} ${containerClassName.includes('justify-center') ? 'text-center' : ''}`}
         style={{ fontSize: size, lineHeight: size * 1.5 }}>
         {pieces.map((s, i) => (
