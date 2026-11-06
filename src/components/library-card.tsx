@@ -119,33 +119,38 @@ export function LibraryCard({
         </View>
       </View>
 
+      {/* Every part below has a fixed number of lines (longer text ends in "…"), so all cards are the same size. */}
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-1">
-          {settings.showFurigana && !kanaOnly && (
-            <Text className="text-[12px] font-semibold tracking-widest text-primary">{word.reading}</Text>
-          )}
-          <Text className="text-[28px] font-bold leading-9 text-ink">{word.word}</Text>
+          {settings.showFurigana ? (
+            <Text numberOfLines={1} className="h-4 text-[12px] font-semibold leading-4 tracking-widest text-primary">
+              {kanaOnly ? '' : word.reading}
+            </Text>
+          ) : null}
+          <Text numberOfLines={1} className="text-[28px] font-bold leading-9 text-ink">
+            {word.word}
+          </Text>
         </View>
         <IconButton icon="volume-up" tone="quiet" label={t('word.listen')} onPress={() => speakJapanese(word.reading)} />
       </View>
 
       <View className="gap-2 rounded-xl bg-surface-low p-3">
-        <Text className="text-[15px] font-semibold leading-5 text-ink">
+        <Text numberOfLines={1} className="text-[15px] font-semibold leading-5 text-ink">
           {meaningFor(word, settings.meaningLanguage)}
         </Text>
-        {word.example !== null ? (
-          <View className="gap-0.5 rounded-lg bg-card/80 px-2.5 py-2">
-            <FuriganaText
-              markup={word.example.ja}
-              size={14}
-              showFurigana={false}
-              targetClassName="font-bold text-primary"
-            />
-            <Text className="text-[12px] leading-4 text-ink-soft">
-              {translationFor(word.example, settings.meaningLanguage)}
-            </Text>
-          </View>
-        ) : null}
+        {/* No example: an empty box of the same size keeps the card the same height. */}
+        <View className={`gap-0.5 rounded-lg px-2.5 py-2 ${word.example ? 'bg-card/80' : 'opacity-0'}`}>
+          <FuriganaText
+            markup={word.example?.ja ?? ' '}
+            size={14}
+            showFurigana={false}
+            numberOfLines={1}
+            targetClassName="font-bold text-primary"
+          />
+          <Text numberOfLines={1} className="text-[12px] leading-4 text-ink-soft">
+            {word.example ? translationFor(word.example, settings.meaningLanguage) : ' '}
+          </Text>
+        </View>
       </View>
 
       <View className="flex-row items-center gap-1">
@@ -175,11 +180,11 @@ export function LibraryTile({ word, onToggleStar }: Props) {
       className="flex-1 gap-1 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
       <View className="flex-row items-start justify-between">
         <View className="flex-1">
-          {settings.showFurigana && !kanaOnly && (
-            <Text numberOfLines={1} className="text-[10px] font-semibold tracking-wider text-primary">
-              {word.reading}
+          {settings.showFurigana ? (
+            <Text numberOfLines={1} className="h-[14px] text-[10px] font-semibold leading-[14px] tracking-wider text-primary">
+              {kanaOnly ? '' : word.reading}
             </Text>
-          )}
+          ) : null}
           <Text numberOfLines={1} className="text-[22px] font-bold text-ink">
             {word.word}
           </Text>
@@ -195,7 +200,8 @@ export function LibraryTile({ word, onToggleStar }: Props) {
       <Text numberOfLines={1} className="text-[12px] text-ink-soft">
         {meaningFor(word, settings.meaningLanguage)}
       </Text>
-      {word.status === 'known' ? <View className="mt-1 h-1 w-8 rounded-full bg-matcha" /> : null}
+      {/* 習得 mark; the space is kept on every tile so they're all the same height. */}
+      <View className={`mt-1 h-1 w-8 rounded-full ${word.status === 'known' ? 'bg-matcha' : 'bg-transparent'}`} />
     </Pressable>
   );
 }
