@@ -45,7 +45,7 @@ export default function EssentialsScreen() {
   if (!group) {
     return (
       <View className="flex-1 bg-surface">
-        <AppHeader subtitle={t('nav.explore')} back kind="reading" />
+        <AppHeader subtitle={t('nav.explore')} back kind="list" />
         <View className="p-4">
           <EmptyState message={t('explore.empty')} />
         </View>
@@ -58,7 +58,7 @@ export default function EssentialsScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={title} back kind="reading" />
+      <AppHeader subtitle={title} back kind="list" />
       <ScrollView
         contentContainerClassName="gap-3"
         contentContainerStyle={{ ...layout.page('list'), paddingBottom: insets.bottom + 24 }}>

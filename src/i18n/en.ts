@@ -105,7 +105,7 @@ const en = {
     searchPlaceholder: 'Search word, reading or meaning',
     status: {
       all: 'All',
-      starred: '⭐ Starred',
+      starred: 'Starred',
     },
     stats: {
       words: 'words',

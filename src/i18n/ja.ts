@@ -109,11 +109,11 @@ const ja: typeof en = {
     searchPlaceholder: '単語・読み・意味で検索',
     status: {
       all: '全部',
-      starred: '⭐ 復習',
+      starred: '復習',
     },
     stats: {
       words: '語',
-      starred: '⭐ 復習',
+      starred: '復習',
       remembered: '定着率',
     },
     badge: {
