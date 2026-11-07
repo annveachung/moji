@@ -71,8 +71,9 @@ export function LibraryCard({
   const kanaOnly = word.reading === word.word;
 
   return (
+    // A link, not a button: on the web a button can't hold the card's own buttons (star, tags, listen).
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={`${word.word} ${word.reading}`}
       onPress={open}
       className="gap-3 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
@@ -173,8 +174,9 @@ export function LibraryTile({ word, onToggleStar }: Props) {
   const kanaOnly = word.reading === word.word;
 
   return (
+    // A link, not a button: on the web a button can't hold the card's own buttons (star, tags, listen).
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={`${word.word} ${word.reading}`}
       onPress={open}
       className="flex-1 gap-1 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
