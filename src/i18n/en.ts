@@ -7,6 +7,8 @@ const en = {
     settings: 'Settings',
   },
   common: {
+    import: 'Import',
+    export: 'Export',
     done: 'Done',
     otherTab: 'moji is open in another tab. Close it and moji will continue here.',
     back: 'Back',

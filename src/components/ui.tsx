@@ -229,6 +229,32 @@ export function StampButton({
   );
 }
 
+/** A small pill with an icon and a short word, for header actions an icon alone would leave unclear. */
+export function LabelButton({
+  icon,
+  label,
+  accessibilityLabel,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  /** Read aloud by VoiceOver when it says more than the label. */
+  accessibilityLabel?: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      onPress={onPress}
+      hitSlop={6}
+      className="h-9 flex-row items-center gap-1.5 rounded-full bg-card px-3 shadow-sm shadow-ink/10 active:scale-95">
+      <Icon name={icon} size={18} color={colors.ink.soft} />
+      <Text className="font-display-semibold text-[12px] text-ink-soft">{label}</Text>
+    </Pressable>
+  );
+}
+
 /** Title row at the top of a card: a small colored bar, the title, and an optional right side. */
 export function SectionHeader({
   title,
