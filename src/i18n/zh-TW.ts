@@ -152,6 +152,18 @@ const zhTW: typeof en = {
     save: '加入單字本',
     saved: '已加入',
   },
+  seen: {
+    newCount: '{{count}} 個新詞',
+    newOnly: '只看新詞',
+    markSeen: '標記為已看過',
+    seen: '已看過',
+    markAll: '全部標記為已看過',
+    markGroup: '這組全部標記為已看過',
+    markAllTitle: '將 {{count}} 個詞標記為已看過？',
+    markAllBody: '它們不會再算作新詞。仍會留在列表中，之後也可以收藏。',
+    noneNew: '這裡沒有新詞，你都看過了。',
+    newDot: '新',
+  },
   essentials: {
     title: '基本詞彙',
     examples: '例句',

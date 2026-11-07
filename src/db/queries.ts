@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { kanjiIn, makeFurigana } from '@/lib/furigana';
 import { guessVerbGroup } from '@/lib/verb';
 
+import { UNSEEN_SQL } from './dictionary';
 import { markDirty, markDirtyById, markWordChildrenDeleted, NEW_UID } from './sync';
 
 import type { CsvWord } from '@/lib/word-csv';
@@ -207,30 +208,34 @@ function collectionWhere(filter: CollectionFilter): { sql: string; params: (stri
     where.push('tags LIKE ?');
     params.push(`%${JSON.stringify(filter.tag)}%`);
   }
+  if (filter.unseenOnly) where.push(UNSEEN_SQL);
   return { sql: where.join(' AND '), params };
 }
 
+/** A catalog word, and whether it's new to you (not saved, not marked as seen). */
+export type CatalogWord = Word & { unseen: boolean };
+
 /** Catalog words in a collection or topic, easiest JLPT level first. */
-export async function getCollectionWords(db: SQLiteDatabase, filter: CollectionFilter): Promise<Word[]> {
+export async function getCollectionWords(db: SQLiteDatabase, filter: CollectionFilter): Promise<CatalogWord[]> {
   const { sql, params } = collectionWhere(filter);
-  const rows = await db.getAllAsync<WordRow>(
-    `SELECT * FROM words WHERE ${sql} ORDER BY jlpt IS NULL, jlpt DESC, id`,
+  const rows = await db.getAllAsync<WordRow & { unseen: number }>(
+    `SELECT *, ${UNSEEN_SQL} AS unseen FROM words WHERE ${sql} ORDER BY jlpt IS NULL, jlpt DESC, id`,
     ...params,
   );
-  return rows.map(toWord);
+  return rows.map((row) => ({ ...toWord(row), unseen: row.unseen === 1 }));
 }
 
-/** "4 / 10 saved" for a collection. */
+/** "4 / 10 saved" for a collection, and how many of its words are new to you. */
 export async function getCollectionProgress(
   db: SQLiteDatabase,
   filter: CollectionFilter,
-): Promise<{ saved: number; total: number }> {
+): Promise<{ saved: number; total: number; unseen: number }> {
   const { sql, params } = collectionWhere(filter);
-  const row = await db.getFirstAsync<{ saved: number; total: number }>(
-    `SELECT COUNT(saved_at) AS saved, COUNT(*) AS total FROM words WHERE ${sql}`,
+  const row = await db.getFirstAsync<{ saved: number; total: number; unseen: number | null }>(
+    `SELECT COUNT(saved_at) AS saved, COUNT(*) AS total, SUM(${UNSEEN_SQL}) AS unseen FROM words WHERE ${sql}`,
     ...params,
   );
-  return { saved: row?.saved ?? 0, total: row?.total ?? 0 };
+  return { saved: row?.saved ?? 0, total: row?.total ?? 0, unseen: row?.unseen ?? 0 };
 }
 
 /** Add a catalog word to your library, or take it out (which also unstars it). */

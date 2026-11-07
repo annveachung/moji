@@ -10,6 +10,7 @@ import { CategoryPicker } from '@/components/category-picker';
 import { FuriganaText } from '@/components/furigana-text';
 import { StarButton } from '@/components/mascot';
 import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
+import { isWordSeen, setWordsSeen } from '@/db/dictionary';
 import {
   countUnseenSentences,
   deleteWord,
@@ -65,6 +66,8 @@ export default function WordDetailScreen() {
   const [related, setRelated] = useState<RelatedWord[]>([]);
   const [speed, setSpeed] = useState(1);
   const [picking, setPicking] = useState(false);
+  /** Catalog words only: whether you've marked it as seen. */
+  const [seen, setSeen] = useState(false);
   const { dataVersion, topicLabel } = useSync();
 
   const load = useCallback(async () => {
@@ -72,6 +75,7 @@ export default function WordDetailScreen() {
     setWord(loaded);
     if (!loaded) return;
     setRelated(await getRelatedWords(db, loaded));
+    setSeen(await isWordSeen(db, loaded));
     let shown = await getShownSentences(db, wordId);
     // First visit: reveal the first example so the section is never empty.
     if (shown.length === 0) {
@@ -104,6 +108,11 @@ export default function WordDetailScreen() {
   const toggleSaved = async () => {
     await setWordSaved(db, word.id, word.savedAt === null);
     setWord(await getWord(db, word.id));
+  };
+
+  const toggleSeen = async () => {
+    await setWordsSeen(db, [word], !seen);
+    setSeen(!seen);
   };
 
   const toggleStar = async () => {
@@ -366,7 +375,19 @@ export default function WordDetailScreen() {
 
         {/* Library actions */}
         {word.savedAt === null ? (
-          <StampButton icon="library-add" label={t('word.addToLibrary')} tone="primary" onPress={toggleSaved} />
+          <View className="flex-row gap-2">
+            <StampButton icon="library-add" label={t('word.addToLibrary')} tone="primary" className="flex-1" onPress={toggleSaved} />
+            {/* Not ready to save it yet: mark it as seen so it stops counting as new. */}
+            {!word.isCustom ? (
+              <StampButton
+                icon={seen ? 'check' : 'visibility'}
+                label={seen ? t('seen.seen') : t('seen.markSeen')}
+                tone="quiet"
+                className="flex-1"
+                onPress={toggleSeen}
+              />
+            ) : null}
+          </View>
         ) : (
           <View className="flex-row gap-2">
             <StampButton

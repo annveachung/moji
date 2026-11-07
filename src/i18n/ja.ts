@@ -153,6 +153,18 @@ const ja: typeof en = {
     save: '単語帳に追加',
     saved: '追加済み',
   },
+  seen: {
+    newCount: '新しい語 {{count}}',
+    newOnly: '新しい語だけ',
+    markSeen: '見たことにする',
+    seen: '見た',
+    markAll: '全部見たことにする',
+    markGroup: 'この中を全部見たことにする',
+    markAllTitle: '{{count}}語を見たことにしますか？',
+    markAllBody: '「新しい語」に数えなくなります。リストには残るので、あとで保存もできます。',
+    noneNew: '新しい語はありません。全部見ました。',
+    newDot: '新',
+  },
   essentials: {
     title: '基本のことば',
     examples: '例文',

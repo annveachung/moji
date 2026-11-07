@@ -18,7 +18,7 @@ import { useLayout } from '@/lib/layout';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
-type Progress = { saved: number; total: number };
+type Progress = { saved: number; total: number; unseen: number };
 
 /**
  * 発見: おすすめ (an AI list of useful words, from news, books and daily life, pitched at your
@@ -187,7 +187,7 @@ function WordStrip({ title, words, onSave }: { title?: string; words: Word[]; on
   );
 }
 
-/** One JLPT level: big level badge, name, description and a saved/total bar. */
+/** One JLPT level: big level badge, name, description, a saved/total bar and how many words are new. */
 function LevelCard({
   level,
   title,
@@ -226,6 +226,9 @@ function LevelCard({
         <Text className="font-display-medium text-[11px] text-ink-muted">
           {progress ? t('explore.progress', { saved: progress.saved, total: progress.total }) : ' '}
         </Text>
+        {progress && progress.unseen > 0 ? (
+          <Text className="font-display text-[11px] text-primary">{t('seen.newCount', { count: progress.unseen })}</Text>
+        ) : null}
       </View>
     </Pressable>
   );
