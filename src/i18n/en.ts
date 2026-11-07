@@ -210,7 +210,6 @@ const en = {
   word: {
     title: 'Word',
     notFound: 'This word could not be found.',
-    furigana: 'Furigana',
     listen: 'Listen',
     speed: 'Speed',
     meaningTitle: 'Meaning',

@@ -214,7 +214,6 @@ const ja: typeof en = {
   word: {
     title: '単語の詳細',
     notFound: 'この単語は見つかりませんでした。',
-    furigana: 'ふりがな',
     listen: '発音を聞く',
     speed: '速さ',
     meaningTitle: '意味',
