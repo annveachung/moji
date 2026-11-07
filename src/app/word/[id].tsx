@@ -208,11 +208,7 @@ export default function WordDetailScreen() {
               </Pressable>
             </View>
             <View className="flex-row items-center gap-1.5">
-              <TogglePill
-                label={t('word.furigana')}
-                on={settings.showFurigana}
-                onPress={() => updateSettings({ showFurigana: !settings.showFurigana })}
-              />
+              <IconButton icon="volume-up" tone="soft" size={34} label={t('word.listen')} onPress={() => speakJapanese(word.reading)} />
               <StarButton
                 starred={Boolean(word.starredAt)}
                 size={34}
@@ -222,7 +218,7 @@ export default function WordDetailScreen() {
             </View>
           </View>
 
-          <View className="flex-row items-center justify-center gap-2 py-4">
+          <View className="items-center py-4">
             <FuriganaText
               markup={word.furigana}
               size={52}
@@ -230,7 +226,6 @@ export default function WordDetailScreen() {
               className="font-bold text-ink"
               containerClassName="justify-center"
             />
-            <IconButton icon="volume-up" tone="soft" label={t('word.listen')} onPress={() => speakJapanese(word.reading)} />
           </View>
         </View>
 
@@ -411,20 +406,6 @@ export default function WordDetailScreen() {
     </View>
   );
 }
-
-function TogglePill({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: on }}
-      onPress={onPress}
-      hitSlop={6}
-      className={`rounded-full px-2.5 py-1.5 ${on ? 'bg-primary' : 'bg-surface-high'}`}>
-      <Text className={`font-display text-[11px] ${on ? 'text-white' : 'text-ink-muted'}`}>{label}</Text>
-    </Pressable>
-  );
-}
-
 
 /** A related word as a small card: reading (with furigana on), the word, and its meaning. */
 function RelatedCard({ word, onPress }: { word: Word; onPress: () => void }) {

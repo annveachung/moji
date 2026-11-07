@@ -213,7 +213,6 @@ const zhTW: typeof en = {
   word: {
     title: '單字',
     notFound: '找不到這個單字。',
-    furigana: '振假名',
     listen: '聽發音',
     speed: '語速',
     meaningTitle: '語義',
