@@ -341,9 +341,9 @@ export default function WordDetailScreen() {
           {groups.length === 0 ? (
             <EmptyState message={t('word.relatedEmpty')} />
           ) : (
-            <TwoColumnGrid gap={10}>
+            <View className="gap-4">
               {groups.map((group) => (
-                <View key={group.kind} className="flex-1 gap-2 rounded-2xl bg-surface-low p-3">
+                <View key={group.kind} className="gap-2">
                   <View className="flex-row items-center gap-1">
                     <Icon
                       name={RELATION_ICON[group.kind]}
@@ -352,24 +352,18 @@ export default function WordDetailScreen() {
                     />
                     <Text className="font-display text-[12px] text-ink">{t(`relation.${group.kind}`)}</Text>
                   </View>
-                  {group.words.map((other) => (
-                    <Pressable
-                      key={other.id}
-                      accessibilityRole="link"
-                      onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(other.id) } })}
-                      className="active:opacity-60">
-                      <FuriganaText
-                        markup={other.furigana}
-                        size={17}
-                        showFurigana={settings.showFurigana}
-                        className="font-bold text-ink"
+                  <TwoColumnGrid gap={8} columns={3}>
+                    {group.words.map((other) => (
+                      <RelatedCard
+                        key={other.id}
+                        word={other}
+                        onPress={() => router.push({ pathname: '/word/[id]', params: { id: String(other.id) } })}
                       />
-                      <Text className="text-[12px] text-ink-soft">{meaningFor(other, settings.meaningLanguage)}</Text>
-                    </Pressable>
-                  ))}
+                    ))}
+                  </TwoColumnGrid>
                 </View>
               ))}
-            </TwoColumnGrid>
+            </View>
           )}
         </Card>
 
@@ -428,3 +422,27 @@ function TogglePill({ label, on, onPress }: { label: string; on: boolean; onPres
   );
 }
 
+
+/** A related word as a small card: reading (with furigana on), the word, and its meaning. */
+function RelatedCard({ word, onPress }: { word: Word; onPress: () => void }) {
+  const { settings } = useSettings();
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`${word.word} ${word.reading}`}
+      onPress={onPress}
+      className="flex-1 rounded-2xl bg-surface-low p-2.5 active:opacity-70">
+      {settings.showFurigana ? (
+        <Text numberOfLines={1} className="h-[13px] text-[9px] font-semibold leading-[13px] tracking-wider text-primary">
+          {word.reading !== word.word ? word.reading : ''}
+        </Text>
+      ) : null}
+      <Text numberOfLines={1} adjustsFontSizeToFit className="text-[18px] font-bold leading-[24px] text-ink">
+        {word.word}
+      </Text>
+      <Text numberOfLines={2} className="h-[30px] text-[11px] leading-[15px] text-ink-soft">
+        {meaningFor(word, settings.meaningLanguage)}
+      </Text>
+    </Pressable>
+  );
+}
