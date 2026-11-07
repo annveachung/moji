@@ -87,7 +87,7 @@ export default function CollectionScreen() {
   if (!collection) {
     return (
       <View className="flex-1 bg-surface">
-        <AppHeader subtitle={t('nav.explore')} back kind="reading" />
+        <AppHeader subtitle={t('nav.explore')} back kind="list" />
         <View className="p-4">
           <EmptyState message={t('explore.empty')} />
         </View>
@@ -106,7 +106,7 @@ export default function CollectionScreen() {
     const categoryName = t(`category.${category}`, { defaultValue: '' });
     return (
       <View className="flex-1 bg-surface">
-        <AppHeader subtitle={`${title} · ${categoryName}`} back kind="reading" />
+        <AppHeader subtitle={`${title} · ${categoryName}`} back kind="list" />
         <FlatList
           // A different number of columns needs a fresh list.
           key={columns}
@@ -165,7 +165,7 @@ export default function CollectionScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      <AppHeader subtitle={title} back kind="reading" />
+      <AppHeader subtitle={title} back kind="list" />
       <ScrollView
         contentContainerClassName="gap-3"
         contentContainerStyle={{ ...layout.page('list'), paddingBottom: insets.bottom + 24 }}>

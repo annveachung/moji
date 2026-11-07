@@ -108,11 +108,11 @@ const zhTW: typeof en = {
     searchPlaceholder: '搜尋單字、讀音或意思',
     status: {
       all: '全部',
-      starred: '⭐ 複習',
+      starred: '複習',
     },
     stats: {
       words: '個單字',
-      starred: '⭐ 複習',
+      starred: '複習',
       remembered: '記憶率',
     },
     badge: {
