@@ -218,6 +218,7 @@ export function WordCardFrame({
   meaning,
   note,
   jlpt,
+  newLabel,
   onPress,
   action,
 }: {
@@ -226,17 +227,20 @@ export function WordCardFrame({
   meaning: string;
   note?: string;
   jlpt: number | null;
+  /** Shown in place of the level when the word is new to you (e.g. 新). */
+  newLabel?: string;
   onPress: () => void;
   action: ReactNode;
 }) {
   const { settings } = useSettings();
+  // The card's buttons sit beside the tappable part, not inside it (a button can't hold another).
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${word} ${reading}`}
-      onPress={onPress}
-      className="flex-1 gap-2 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
-      <View className="flex-1">
+    <View className="flex-1 gap-2 rounded-2xl bg-card p-3 shadow-md shadow-ink/10">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${word} ${reading}`}
+        onPress={onPress}
+        className="flex-1 active:opacity-70">
         {settings.showFurigana ? (
           <Text numberOfLines={1} className="h-[14px] text-[10px] font-semibold leading-[14px] tracking-wider text-primary">
             {reading !== word ? reading : ''}
@@ -253,11 +257,15 @@ export function WordCardFrame({
             {note}
           </Text>
         ) : null}
-      </View>
+      </Pressable>
       <View className="h-[30px] flex-row items-center justify-between">
-        <Text className="font-display text-[10px] text-ink-muted">{jlpt !== null ? `N${jlpt}` : ''}</Text>
+        {newLabel ? (
+          <Text className="rounded-full bg-primary-soft px-2 py-0.5 font-display text-[10px] text-primary">{newLabel}</Text>
+        ) : (
+          <Text className="font-display text-[10px] text-ink-muted">{jlpt !== null ? `N${jlpt}` : ''}</Text>
+        )}
         {action}
       </View>
-    </Pressable>
+    </View>
   );
 }
