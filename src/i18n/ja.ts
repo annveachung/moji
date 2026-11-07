@@ -93,7 +93,7 @@ const ja: typeof en = {
     other: 'その他',
   },
   jlpt: {
-    level: 'JLPT N{{level}}',
+    level: 'N{{level}}',
     none: 'JLPT範囲外',
   },
   zhLink: {
@@ -220,6 +220,9 @@ const ja: typeof en = {
     meaningTitle: '意味',
     zhTitle: '日中比較',
     examplesTitle: '例文',
+    regenerate: '作り直す',
+    regenerating: '作成中…',
+    regenerateHint: 'AIで新しい例文を作る',
     examplesCount_one: '例文{{count}}件',
     examplesCount_other: '例文{{count}}件',
     examplesEmpty: '例文はまだありません。「編集」から追加できます。',

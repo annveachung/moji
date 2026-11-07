@@ -222,7 +222,7 @@ function StarredRule({
             hitSlop={4}
             onPress={() => onLevel(rule.jlpt!)}>
             <Pill
-              label={`JLPT N${rule.jlpt}`}
+              label={`N${rule.jlpt}`}
               tone={activeLevel === rule.jlpt ? 'primary' : 'mustard'}
               icon={activeLevel === rule.jlpt ? 'filter-alt' : undefined}
             />

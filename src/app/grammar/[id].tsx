@@ -147,7 +147,7 @@ export default function GrammarDetailScreen() {
         <View className="gap-3 rounded-[28px] bg-card p-5 shadow-md shadow-ink/10">
           <View className="flex-row items-center justify-between">
             <View className="flex-1 flex-row flex-wrap gap-1.5">
-              {rule.jlpt !== null ? <Pill label={`JLPT N${rule.jlpt}`} tone="mustard" /> : null}
+              {rule.jlpt !== null ? <Pill label={`N${rule.jlpt}`} tone="mustard" /> : null}
               {/* What the pattern does, chosen by the AI: tap to change it. */}
               <Pressable accessibilityRole="button" accessibilityLabel={t('categoryUi.change')} onPress={() => setPicking(true)}>
                 <Pill label={t(`grammarFn.${rule.category ?? 'other'}`)} icon="edit" />

@@ -92,7 +92,7 @@ const zhTW: typeof en = {
     other: '其他',
   },
   jlpt: {
-    level: 'JLPT N{{level}}',
+    level: 'N{{level}}',
     none: '非 JLPT 範圍',
   },
   zhLink: {
@@ -219,6 +219,9 @@ const zhTW: typeof en = {
     meaningTitle: '語義',
     zhTitle: '日中對比',
     examplesTitle: '例句',
+    regenerate: '重新產生',
+    regenerating: '產生中…',
+    regenerateHint: '用 AI 產生新的例句',
     examplesCount_one: '{{count}} 個例句',
     examplesCount_other: '{{count}} 個例句',
     examplesEmpty: '還沒有例句，可以從「編輯」新增。',
