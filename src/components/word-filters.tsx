@@ -6,6 +6,7 @@ import type { JlptLevel, LibraryFilters, PartOfSpeech, ReviewFilter } from '@/db
 import { WORD_CATEGORIES } from '@/lib/categories';
 import { VERB_GROUPS } from '@/lib/verb';
 
+import { Mascot } from './mascot';
 import { Chip } from './ui';
 
 const STATUSES: ReviewFilter[] = ['all', 'starred'];
@@ -24,7 +25,7 @@ export function WordFilters({
 }: {
   filters: LibraryFilters;
   onChange: (patch: Partial<LibraryFilters>) => void;
-  /** 全部 / ⭐ (the 単語帳 only; 復習 is all starred already). */
+  /** 全部 / 復習 (the 単語帳 only; 復習 is all starred already). */
   showStatus?: boolean;
   /** Shown next to the topic filter, e.g. "sort その他 with AI". */
   topicExtra?: ReactNode;
@@ -42,6 +43,7 @@ export function WordFilters({
                 label={t(`library.status.${status}`)}
                 selected={filters.status === status}
                 onPress={() => onChange({ status })}
+                icon={status === 'starred' ? <Mascot size={16} /> : undefined}
               />
             ))}
             <View className="mx-1 w-px bg-ink/15" />
