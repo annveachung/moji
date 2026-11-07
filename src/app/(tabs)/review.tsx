@@ -207,8 +207,9 @@ function StarredRule({
   const { t } = useTranslation();
   const { settings } = useSettings();
   return (
+    // A link, not a button: on the web a button can't hold the card's own buttons.
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={rule.pattern}
       onPress={() => router.push({ pathname: '/grammar/[id]', params: { id: String(rule.id) } })}
       className="gap-2 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
