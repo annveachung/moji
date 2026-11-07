@@ -81,9 +81,9 @@ export default function ExploreScreen() {
       <AppHeader subtitle={t('nav.explore')} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        // Extra room at the bottom so the last cards clear the floating tab bar.
+        // The iOS tab bar's room is added by contentInsetAdjustmentBehavior, so only a small margin here.
         contentContainerStyle={layout.page('list')}
-        contentContainerClassName="gap-4 pb-32 pt-3">
+        contentContainerClassName="gap-4 pb-8 pt-3">
         <Text className="px-1 text-[13px] leading-5 text-ink-soft">{t('explore.intro')}</Text>
 
         {/* 1. おすすめ: one AI list of useful words */}

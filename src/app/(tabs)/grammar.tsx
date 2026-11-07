@@ -190,7 +190,7 @@ export default function GrammarScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={layout.page('list')}
-        contentContainerClassName="gap-3 pb-32"
+        contentContainerClassName="gap-3 pb-8"
         ListHeaderComponent={header}
         ListEmptyComponent={
           rules !== null ? (
