@@ -13,7 +13,7 @@ import { guessVerbGroup } from '@/lib/verb';
  *   before it's uploaded. Otherwise the newest change wins.
  */
 
-export type SyncKind = 'word' | 'sentence' | 'review' | 'grammar' | 'grammarSentence' | 'topic';
+export type SyncKind = 'word' | 'sentence' | 'review' | 'grammar' | 'grammarSentence' | 'topic' | 'seen';
 export type SyncItem = { kind: SyncKind; uid: string; data: Record<string, unknown> | null; deleted?: boolean };
 
 /** Where each kind lives locally. */
@@ -24,11 +24,12 @@ const TABLE: Record<SyncKind, string> = {
   grammar: 'grammar',
   grammarSentence: 'grammar_sentences',
   topic: 'topics',
+  seen: 'seen',
 };
 const UID_COLUMN: Record<SyncKind, string> = { ...mapValues(TABLE, () => 'uid'), topic: 'id' };
 
 /** Parents before children, so a sentence always finds its word. */
-const APPLY_ORDER: SyncKind[] = ['topic', 'word', 'grammar', 'sentence', 'grammarSentence', 'review'];
+const APPLY_ORDER: SyncKind[] = ['topic', 'word', 'grammar', 'sentence', 'grammarSentence', 'review', 'seen'];
 
 /** SQL for a fresh random uid, used in INSERTs. */
 export const NEW_UID = 'lower(hex(randomblob(16)))';
@@ -50,6 +51,20 @@ export async function markDirty(db: SQLiteDatabase, kind: SyncKind, uid: string 
     'INSERT INTO outbox (kind, uid) VALUES (?, ?) ON CONFLICT (kind, uid) DO UPDATE SET version = version + 1',
     kind, uid,
   );
+  listeners.forEach((listener) => listener());
+}
+
+/** markDirty for many rows of one kind at once (e.g. "mark all as seen"), with one notification. */
+export async function markDirtyMany(db: SQLiteDatabase, kind: SyncKind, uids: string[]) {
+  if (uids.length === 0) return;
+  const statement = await db.prepareAsync(
+    'INSERT INTO outbox (kind, uid) VALUES (?, ?) ON CONFLICT (kind, uid) DO UPDATE SET version = version + 1',
+  );
+  try {
+    for (const uid of uids) await statement.executeAsync(kind, uid);
+  } finally {
+    await statement.finalizeAsync();
+  }
   listeners.forEach((listener) => listener());
 }
 
@@ -167,6 +182,10 @@ async function serialize(db: SQLiteDatabase, kind: SyncKind, uid: string): Promi
       if (!t) return null;
       return { labelJa: t.label_ja, labelEn: t.label_en, labelZh: t.label_zh, createdAt: t.created_at };
     }
+    case 'seen': {
+      const row = await db.getFirstAsync<{ seen_at: string }>('SELECT seen_at FROM seen WHERE uid = ?', uid);
+      return row ? { seenAt: row.seen_at } : null;
+    }
   }
 }
 
@@ -213,6 +232,12 @@ async function idFor(db: SQLiteDatabase, kind: SyncKind, uid: unknown): Promise<
 
 async function upsertLocal(db: SQLiteDatabase, kind: SyncKind, uid: string, d: Data) {
   switch (kind) {
+    case 'seen':
+      await db.runAsync(
+        'INSERT INTO seen (uid, seen_at) VALUES (?, ?) ON CONFLICT (uid) DO UPDATE SET seen_at = excluded.seen_at',
+        uid, d.seenAt ?? new Date().toISOString(),
+      );
+      return;
     case 'topic':
       await db.runAsync(
         `INSERT INTO topics (id, label_ja, label_en, label_zh) VALUES (?, ?, ?, ?)
@@ -321,12 +346,15 @@ async function removeLocal(db: SQLiteDatabase, kind: SyncKind, uid: string) {
 
 // ── Sync bookkeeping ─────────────────────────────────────────
 
-export async function getSyncState(db: SQLiteDatabase, key: 'cursor' | 'userId'): Promise<string | null> {
+/** cursor: your own data; dictionaryCursor: the shared dictionary; userId: who synced last. */
+type SyncStateKey = 'cursor' | 'dictionaryCursor' | 'userId';
+
+export async function getSyncState(db: SQLiteDatabase, key: SyncStateKey): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM sync_state WHERE key = ?', key);
   return row?.value ?? null;
 }
 
-export async function setSyncState(db: SQLiteDatabase, key: 'cursor' | 'userId', value: string) {
+export async function setSyncState(db: SQLiteDatabase, key: SyncStateKey, value: string) {
   await db.runAsync(
     'INSERT INTO sync_state (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
     key, value,
@@ -347,8 +375,10 @@ export async function clearPersonalData(db: SQLiteDatabase) {
       DELETE FROM review_logs;
       DELETE FROM grammar;
       DELETE FROM topics;
+      DELETE FROM seen;
       DELETE FROM outbox;
-      DELETE FROM sync_state;
+      -- The shared dictionary is the same for everyone, so it isn't downloaded again.
+      DELETE FROM sync_state WHERE key != 'dictionaryCursor';
     `);
   });
 }

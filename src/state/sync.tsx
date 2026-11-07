@@ -3,6 +3,7 @@ import { createContext, use, useCallback, useEffect, useRef, useState, type Reac
 import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
 
+import { applyDictionary, type DictionaryEntry } from '@/db/dictionary';
 import {
   applyDownloaded,
   clearPersonalData,
@@ -21,7 +22,8 @@ import { useAuth } from '@/state/auth';
 /**
  * Keeps this device and moji-api in step. Changes are saved here first (so the app is
  * instant and works offline), then uploaded; changes from your other devices come down
- * when the app opens, comes back to the front, and every couple of minutes.
+ * when the app opens, comes back to the front, and every couple of minutes. New words in the
+ * shared dictionary come down at the same time.
  */
 type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
 
@@ -91,8 +93,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         cursor = page.cursor;
         if (!page.more) break;
       }
-      const changed = await applyDownloaded(db, items);
+      let changed = await applyDownloaded(db, items);
       await setSyncState(db, 'cursor', cursor);
+
+      // The shared dictionary: what's new since last time (the first time, all of it, page by page).
+      let dictionaryCursor = (await getSyncState(db, 'dictionaryCursor')) ?? '0';
+      for (;;) {
+        const page = await apiFetch<{ entries: DictionaryEntry[]; cursor: string; more: boolean }>(
+          `/dictionary?since=${dictionaryCursor}`,
+        );
+        changed += await applyDictionary(db, page.entries);
+        dictionaryCursor = page.cursor;
+        await setSyncState(db, 'dictionaryCursor', dictionaryCursor);
+        if (!page.more) break;
+      }
       if (changed > 0) setDataVersion((v) => v + 1);
       setLastSyncedAt(new Date());
       setStatus('idle');

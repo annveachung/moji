@@ -149,6 +149,18 @@ const en = {
     save: 'Save to library',
     saved: 'In your library',
   },
+  seen: {
+    newCount: '{{count}} new',
+    newOnly: 'New only',
+    markSeen: 'Mark as seen',
+    seen: 'Seen',
+    markAll: 'Mark all as seen',
+    markGroup: 'Mark these as seen',
+    markAllTitle: 'Mark {{count}} words as seen?',
+    markAllBody: 'They won’t count as new any more. They stay in the list, and you can still save them.',
+    noneNew: 'Nothing new here. You’ve seen every word.',
+    newDot: 'New',
+  },
   essentials: {
     title: 'Everyday essentials',
     examples: 'Examples',

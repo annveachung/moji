@@ -8,7 +8,7 @@ import { useSettings } from '@/state/settings';
 
 import { FuriganaText } from './furigana-text';
 
-/** One word in a list (library, explore). Tap to open its detail page. */
+/** One word in a list (library, explore). Furigana only when it's switched on. Tap to open its detail page. */
 export function WordRow({ word, right }: { word: Word; right?: ReactNode }) {
   const router = useRouter();
   const { settings } = useSettings();
@@ -26,9 +26,6 @@ export function WordRow({ word, right }: { word: Word; right?: ReactNode }) {
           showFurigana={settings.showFurigana}
           className="font-bold text-ink"
         />
-        {!settings.showFurigana && word.reading !== word.word && (
-          <Text className="text-[12px] text-ink-soft">{word.reading}</Text>
-        )}
         <Text numberOfLines={1} className="text-[14px] text-ink-soft">
           {meaningFor(word, settings.meaningLanguage)}
         </Text>

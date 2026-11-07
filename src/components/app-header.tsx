@@ -44,7 +44,9 @@ export function AppHeader({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('common.back')}
-              onPress={() => router.back()}
+              // Opened straight from a link or after a page refresh there's nothing to go back to:
+              // go to the first tab instead.
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
               hitSlop={12}
               className="-ml-1 h-11 w-9 items-center justify-center">
               <Icon name="arrow-back-ios-new" size={22} />

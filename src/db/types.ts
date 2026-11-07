@@ -141,6 +141,8 @@ export type CollectionFilter = {
   /** Only words written entirely in kanji, with at least two (compounds like 観光). */
   kanjiCompound?: boolean;
   tag?: string;
+  /** Only words new to you: not saved and not marked as seen. */
+  unseenOnly?: boolean;
 };
 
 /** A grammar rule in 文法, e.g. 〜ても "even if". */
