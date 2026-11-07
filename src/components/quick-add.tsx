@@ -111,7 +111,7 @@ export function QuickAdd({ onAdded }: { onAdded: () => void }) {
               <Icon name="close" size={18} color={colors.ink.muted} />
             </Pressable>
           </View>
-          <FuriganaText markup={added.furigana} size={26} className="font-bold text-ink" />
+          <FuriganaText markup={added.furigana} size={26} className="font-bold text-ink" showFurigana={settings.showFurigana} />
           <Text className="text-[15px] font-semibold text-ink">{meaningFor(added, settings.meaningLanguage)}</Text>
           <View className="flex-row flex-wrap items-center gap-2">
             {added.jlpt !== null ? <Pill label={`N${added.jlpt}`} tone="mustard" /> : null}
