@@ -37,7 +37,8 @@ async function playAiVoice(text: string, rate: number, press: number) {
     await setAudioModeAsync({ playsInSilentMode: true });
     audioModeSet = true;
   }
-  const file = new File(Paths.cache, `speech-${speechKey(text)}.wav`);
+  // v2: clips saved before the server fix crash at the end, so they're fetched again.
+  const file = new File(Paths.cache, `speech-v2-${speechKey(text)}.wav`);
   if (!file.exists) {
     const audio = await fetchSpeech(text);
     file.create({ overwrite: true });
