@@ -494,6 +494,25 @@ export async function revealNextSentence(db: SQLiteDatabase, wordId: number): Pr
   return toSentence({ ...row, seen: 1 });
 }
 
+/** Every example of a word, shown or not (so the AI can be told which ones it already has). */
+export async function getAllSentences(db: SQLiteDatabase, wordId: number): Promise<Sentence[]> {
+  const rows = await db.getAllAsync<SentenceRow>('SELECT * FROM sentences WHERE word_id = ? ORDER BY id', wordId);
+  return rows.map(toSentence);
+}
+
+/** New examples (e.g. from the AI) go into the word's bank, not shown yet; repeats are skipped. */
+export async function addSentences(db: SQLiteDatabase, wordId: number, sentences: { ja: string; en: string; zh: string }[]) {
+  for (const sentence of sentences) {
+    const exists = await db.getFirstAsync('SELECT 1 FROM sentences WHERE word_id = ? AND ja = ?', wordId, sentence.ja);
+    if (exists) continue;
+    const result = await db.runAsync(
+      `INSERT INTO sentences (word_id, ja, en, zh, seen, uid) VALUES (?, ?, ?, ?, 0, ${NEW_UID})`,
+      wordId, sentence.ja, sentence.en, sentence.zh,
+    );
+    await markDirtyById(db, 'sentence', result.lastInsertRowId);
+  }
+}
+
 export async function countUnseenSentences(db: SQLiteDatabase, wordId: number): Promise<number> {
   const row = await db.getFirstAsync<{ n: number }>(
     'SELECT COUNT(*) AS n FROM sentences WHERE word_id = ? AND seen = 0',

@@ -82,7 +82,7 @@ export function LibraryCard({
         <TagRow>
           {word.jlpt !== null ? (
             <TagPill
-              label={`JLPT N${word.jlpt}`}
+              label={`N${word.jlpt}`}
               tone="mustard"
               active={filters.jlpt === word.jlpt}
               onPress={() => onFilter({ jlpt: filters.jlpt === word.jlpt ? null : word.jlpt })}

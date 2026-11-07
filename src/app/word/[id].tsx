@@ -9,10 +9,12 @@ import { AppHeader } from '@/components/app-header';
 import { CategoryPicker } from '@/components/category-picker';
 import { FuriganaText } from '@/components/furigana-text';
 import { StarButton } from '@/components/mascot';
-import { Card, EmptyState, Icon, IconButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
+import { Card, EmptyState, Icon, IconButton, LabelButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
 import { isWordSeen, setWordsSeen } from '@/db/dictionary';
 import {
+  addSentences,
   countUnseenSentences,
+  getAllSentences,
   deleteWord,
   getRelatedWords,
   getShownSentences,
@@ -24,6 +26,8 @@ import {
   setWordStarred,
 } from '@/db/queries';
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
+import { generateWordSentences } from '@/lib/ai';
+import { aiErrorMessage } from '@/lib/ai-errors';
 import { showAlert } from '@/lib/alert';
 import { isWordCategory } from '@/lib/categories';
 import { furiganaToReading } from '@/lib/furigana';
@@ -64,7 +68,7 @@ export default function WordDetailScreen() {
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [unseen, setUnseen] = useState(0);
   const [related, setRelated] = useState<RelatedWord[]>([]);
-  const [speed, setSpeed] = useState(1);
+  const [generating, setGenerating] = useState(false);
   const [picking, setPicking] = useState(false);
   /** Catalog words only: whether you've marked it as seen. */
   const [seen, setSeen] = useState(false);
@@ -133,6 +137,26 @@ export default function WordDetailScreen() {
       },
     ]);
 
+  /** New examples from the AI (different from the ones it has), then the first is shown. */
+  const regenerateExamples = async () => {
+    setGenerating(true);
+    try {
+      const all = await getAllSentences(db, word.id);
+      const fresh = await generateWordSentences({
+        word: word.word,
+        reading: word.reading,
+        meaning: word.meaningEn,
+        avoid: all.map((s) => s.ja).slice(-30),
+      });
+      await addSentences(db, word.id, fresh);
+      await showAnotherExample();
+    } catch (error) {
+      showAlert(t('word.examplesTitle'), aiErrorMessage(t, error));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const showAnotherExample = async () => {
     const next = await revealNextSentence(db, word.id);
     if (next) setSentences((current) => [...current, next]);
@@ -177,6 +201,7 @@ export default function WordDetailScreen() {
           <View className="flex-row items-center justify-between gap-2">
             <View className="flex-1 flex-row flex-wrap gap-1.5">
               <Pill label={word.jlpt ? t('jlpt.level', { level: word.jlpt }) : t('jlpt.none')} tone="mustard" />
+              <Pill label={posLabel(t, word)} tone="outline" />
               {/* The category the AI chose: tap to move the word to another one. */}
               <Pressable accessibilityRole="button" accessibilityLabel={t('categoryUi.change')} onPress={() => setPicking(true)}>
                 <Pill label={topicLabel(word.topic)} icon="edit" />
@@ -197,7 +222,7 @@ export default function WordDetailScreen() {
             </View>
           </View>
 
-          <View className="items-center gap-2 py-4">
+          <View className="flex-row items-center justify-center gap-2 py-4">
             <FuriganaText
               markup={word.furigana}
               size={52}
@@ -205,35 +230,7 @@ export default function WordDetailScreen() {
               className="font-bold text-ink"
               containerClassName="justify-center"
             />
-            <Pill label={posLabel(t, word)} tone="outline" />
-          </View>
-
-          <View className="flex-row items-center justify-between rounded-2xl bg-surface-low p-2.5">
-            <View className="flex-row items-center gap-2.5">
-              <IconButton
-                icon="volume-up"
-                tone="primary"
-                label={t('word.listen')}
-                onPress={() => speakJapanese(word.reading, speed)}
-              />
-              <Text className="font-display-semibold text-[14px] text-ink">{t('word.listen')}</Text>
-            </View>
-            <View
-              accessibilityLabel={t('word.speed')}
-              className="flex-row gap-1 rounded-full bg-card p-0.5">
-              {[1, 0.7].map((value) => (
-                <Pressable
-                  key={value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: speed === value }}
-                  onPress={() => setSpeed(value)}
-                  className={`rounded-full px-2.5 py-1 ${speed === value ? 'bg-primary-soft' : ''}`}>
-                  <Text className={`font-display-semibold text-[12px] ${speed === value ? 'text-primary' : 'text-ink-muted'}`}>
-                    {value.toFixed(1)}x
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <IconButton icon="volume-up" tone="soft" label={t('word.listen')} onPress={() => speakJapanese(word.reading)} />
           </View>
         </View>
 
@@ -285,9 +282,15 @@ export default function WordDetailScreen() {
           <SectionHeader
             title={t('word.examplesTitle')}
             right={
-              <Text className="text-[11px] text-ink-muted">
-                {t('word.examplesCount', { count: sentences.length })}
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-[11px] text-ink-muted">{t('word.examplesCount', { count: sentences.length })}</Text>
+                <LabelButton
+                  icon={generating ? 'hourglass-empty' : 'refresh'}
+                  label={generating ? t('word.regenerating') : t('word.regenerate')}
+                  accessibilityLabel={t('word.regenerateHint')}
+                  onPress={generating ? () => {} : regenerateExamples}
+                />
+              </View>
             }
           />
           {sentences.length === 0 && <EmptyState message={t('word.examplesEmpty')} />}
@@ -309,7 +312,7 @@ export default function WordDetailScreen() {
                     tone="quiet"
                     size={32}
                     label={t('word.listen')}
-                    onPress={() => speakJapanese(furiganaToReading(sentence.ja), speed)}
+                    onPress={() => speakJapanese(furiganaToReading(sentence.ja))}
                   />
                   <StarButton
                     starred={Boolean(sentence.favorite)}

@@ -89,7 +89,7 @@ const en = {
     other: 'Other',
   },
   jlpt: {
-    level: 'JLPT N{{level}}',
+    level: 'N{{level}}',
     none: 'Not on JLPT',
   },
   zhLink: {
@@ -216,6 +216,9 @@ const en = {
     meaningTitle: 'Meaning',
     zhTitle: 'Chinese connection',
     examplesTitle: 'Example sentences',
+    regenerate: 'Regenerate',
+    regenerating: 'Making…',
+    regenerateHint: 'New example sentences from the AI',
     examplesCount_one: '{{count}} example',
     examplesCount_other: '{{count}} examples',
     examplesEmpty: 'No example sentences yet. Add one with Edit.',
