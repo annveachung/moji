@@ -263,13 +263,25 @@ export function EmptyState({ message }: { message: string }) {
 }
 
 /** A tappable filter chip; vermilion when selected. */
-export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  icon,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  /** Shown before the label, e.g. the mascot on 復習. */
+  icon?: ReactNode;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      className={`rounded-full px-3.5 py-2 shadow-sm shadow-ink/10 ${selected ? 'bg-primary' : 'bg-card'}`}>
+      className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-2 shadow-sm shadow-ink/10 ${selected ? 'bg-primary' : 'bg-card'}`}>
+      {icon}
       <Text className={`font-display-semibold text-[12px] ${selected ? 'text-white' : 'text-ink-soft'}`}>{label}</Text>
     </Pressable>
   );
