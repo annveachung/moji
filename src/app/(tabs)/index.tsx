@@ -10,7 +10,7 @@ import { WalkingMascot } from '@/components/mascot';
 import { QuickAdd } from '@/components/quick-add';
 import { WordFilters } from '@/components/word-filters';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
-import { EmptyState, Icon, IconButton, type IconName } from '@/components/ui';
+import { EmptyState, Icon, LabelButton, type IconName } from '@/components/ui';
 import {
   applyImport,
   getAllLibraryWords,
@@ -128,8 +128,8 @@ export default function LibraryScreen() {
 
   const headerButtons = (
     <View className="flex-row gap-2">
-      <IconButton icon="file-download" size={36} label={t('library.importCsv')} onPress={importCsv} />
-      <IconButton icon="ios-share" size={36} label={t('library.exportCsv')} onPress={exportCsv} />
+      <LabelButton icon="upload-file" label={t('common.import')} accessibilityLabel={t('library.importCsv')} onPress={importCsv} />
+      <LabelButton icon="download" label={t('common.export')} accessibilityLabel={t('library.exportCsv')} onPress={exportCsv} />
     </View>
   );
 

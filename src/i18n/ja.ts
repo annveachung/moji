@@ -11,6 +11,8 @@ const ja: typeof en = {
     settings: '設定',
   },
   common: {
+    import: 'インポート',
+    export: 'エクスポート',
     done: '完了',
     otherTab: 'mojiは別のタブで開いています。そのタブを閉じると、ここで続けられます。',
     back: '戻る',

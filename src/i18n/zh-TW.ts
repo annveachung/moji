@@ -10,6 +10,8 @@ const zhTW: typeof en = {
     settings: '設定',
   },
   common: {
+    import: '匯入',
+    export: '匯出',
     done: '完成',
     otherTab: 'moji 已在另一個分頁開啟。關掉那個分頁後，就會在這裡繼續。',
     back: '返回',

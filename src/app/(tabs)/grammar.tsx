@@ -8,7 +8,7 @@ import { AppHeader } from '@/components/app-header';
 import { DailyReading } from '@/components/daily-reading';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
 import { StarButton } from '@/components/mascot';
-import { Card, Chip, EmptyState, Icon, IconButton, Pill, SectionHeader, type IconName } from '@/components/ui';
+import { Card, Chip, EmptyState, Icon, LabelButton, Pill, SectionHeader, type IconName } from '@/components/ui';
 import {
   applyGrammarImport,
   getGrammarRules,
@@ -173,7 +173,9 @@ export default function GrammarScreen() {
     <View className="flex-1 bg-surface">
       <AppHeader
         subtitle={t('nav.grammar')}
-        right={<IconButton icon="file-download" size={36} label={t('grammar.importCsv')} onPress={importCsv} />}
+        right={
+          <LabelButton icon="upload-file" label={t('common.import')} accessibilityLabel={t('grammar.importCsv')} onPress={importCsv} />
+        }
       />
       {importing !== null ? (
         <ImportSheet review={toReview(importing)} onCancel={() => setImporting(null)} onConfirm={confirmImport} />
