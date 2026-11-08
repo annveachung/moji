@@ -14,6 +14,7 @@ import { isWordSeen, setWordsSeen } from '@/db/dictionary';
 import {
   addSentences,
   countUnseenSentences,
+  deleteSentence,
   getAllSentences,
   deleteWord,
   getRelatedWords,
@@ -45,6 +46,9 @@ const ZH_LINK_STYLE: Record<ChineseLinkKind, { icon: IconName; tone: 'matcha' | 
   'false-friend': { icon: 'warning', tone: 'error' },
 };
 
+/** How many examples show before "Show all". */
+const FOLDED_EXAMPLES = 3;
+
 const RELATION_ORDER: RelatedWord['kind'][] = ['synonym', 'antonym', 'confusing', 'shared-kanji'];
 const RELATION_ICON: Record<RelatedWord['kind'], IconName> = {
   synonym: 'compare-arrows',
@@ -61,7 +65,7 @@ export default function WordDetailScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const layout = useLayout();
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
   const zh = settings.meaningLanguage === 'zh-TW';
 
   const [word, setWord] = useState<Word | null | undefined>(undefined);
@@ -69,6 +73,8 @@ export default function WordDetailScreen() {
   const [unseen, setUnseen] = useState(0);
   const [related, setRelated] = useState<RelatedWord[]>([]);
   const [generating, setGenerating] = useState(false);
+  /** The examples list shows only the first few until opened. */
+  const [expanded, setExpanded] = useState(false);
   const [picking, setPicking] = useState(false);
   /** Catalog words only: whether you've marked it as seen. */
   const [seen, setSeen] = useState(false);
@@ -159,8 +165,17 @@ export default function WordDetailScreen() {
 
   const showAnotherExample = async () => {
     const next = await revealNextSentence(db, word.id);
-    if (next) setSentences((current) => [...current, next]);
+    if (next) {
+      setSentences((current) => [...current, next]);
+      // The new one goes at the end: open the list so you see it.
+      setExpanded(true);
+    }
     setUnseen(await countUnseenSentences(db, word.id));
+  };
+
+  const removeExample = async (sentence: Sentence) => {
+    await deleteSentence(db, sentence.id);
+    setSentences((current) => current.filter((s) => s.id !== sentence.id));
   };
 
   const toggleFavorite = async (sentence: Sentence) => {
@@ -229,20 +244,9 @@ export default function WordDetailScreen() {
           </View>
         </View>
 
-        {/* 2. Meaning, in one language at a time */}
+        {/* 2. Meaning, in the language chosen in Settings */}
         <Card>
-          <SectionHeader
-            title={t('word.meaningTitle')}
-            right={
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => updateSettings({ meaningLanguage: zh ? 'en' : 'zh-TW' })}
-                className="flex-row items-center gap-1 rounded-full bg-surface-high px-3 py-1.5 active:bg-primary-soft">
-                <Icon name="translate" size={14} />
-                <Text className="font-display text-[12px] text-ink">{zh ? 'EN' : '中文'}</Text>
-              </Pressable>
-            }
-          />
+          <SectionHeader title={t('word.meaningTitle')} />
           <View className="rounded-2xl bg-primary-soft/60 p-4">
             <Text className="mb-1 font-display text-[11px] tracking-wide text-primary">
               {zh ? '繁體中文' : 'English'}
@@ -289,7 +293,7 @@ export default function WordDetailScreen() {
             }
           />
           {sentences.length === 0 && <EmptyState message={t('word.examplesEmpty')} />}
-          {sentences.map((sentence) => (
+          {(expanded ? sentences : sentences.slice(0, FOLDED_EXAMPLES)).map((sentence) => (
             <View key={sentence.id} className="gap-2 rounded-2xl bg-surface-low p-3">
               <View className="flex-row items-start justify-between gap-2">
                 <View className="flex-1">
@@ -315,6 +319,13 @@ export default function WordDetailScreen() {
                     label={t('word.favorite')}
                     onPress={() => toggleFavorite(sentence)}
                   />
+                  <IconButton
+                    icon="close"
+                    tone="quiet"
+                    size={32}
+                    label={t('word.removeExample')}
+                    onPress={() => removeExample(sentence)}
+                  />
                 </View>
               </View>
               <Text className="text-[13px] leading-5 text-ink-soft">
@@ -322,6 +333,17 @@ export default function WordDetailScreen() {
               </Text>
             </View>
           ))}
+          {sentences.length > FOLDED_EXAMPLES && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setExpanded(!expanded)}
+              className="flex-row items-center justify-center gap-1 py-1 active:opacity-60">
+              <Icon name={expanded ? 'expand-less' : 'expand-more'} size={18} color={colors.ink.soft} />
+              <Text className="font-display-semibold text-[13px] text-ink-soft">
+                {expanded ? t('word.showFewer') : t('word.showAllExamples', { count: sentences.length })}
+              </Text>
+            </Pressable>
+          )}
           {(unseen > 0 || sentences.length > 0) && (
             <StampButton
               tone="quiet"

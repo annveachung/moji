@@ -521,6 +521,13 @@ export async function countUnseenSentences(db: SQLiteDatabase, wordId: number): 
   return row?.n ?? 0;
 }
 
+/** Remove one example of a word (synced as deleted). */
+export async function deleteSentence(db: SQLiteDatabase, id: number) {
+  const row = await db.getFirstAsync<{ uid: string | null }>('SELECT uid FROM sentences WHERE id = ?', id);
+  await db.runAsync('DELETE FROM sentences WHERE id = ?', id);
+  await markDirty(db, 'sentence', row?.uid);
+}
+
 export async function setSentenceFavorite(db: SQLiteDatabase, id: number, favorite: boolean) {
   await db.runAsync('UPDATE sentences SET favorite = ? WHERE id = ?', favorite ? 1 : 0, id);
   await markDirtyById(db, 'sentence', id);
