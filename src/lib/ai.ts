@@ -80,7 +80,7 @@ export async function generateWordSentences(word: {
   return sentences;
 }
 
-/** Five words related in meaning (dictionary entries; new ones may have just been added). */
+/** Six words related in meaning (dictionary entries; new ones may have just been added). */
 export async function fetchRelated(word: {
   word: string;
   reading: string;

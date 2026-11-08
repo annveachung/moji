@@ -12,7 +12,7 @@ export const DATABASE_NAME = 'moji.db';
  * Bump this and add a `if (version < N)` block below whenever the schema changes.
  * SQLite remembers the version in `PRAGMA user_version`, so each migration runs once.
  */
-const DATABASE_VERSION = 8;
+const DATABASE_VERSION = 9;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -259,6 +259,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
           PRIMARY KEY (word, reading)
         );
       `);
+    }
+    if (version < 9) {
+      // Related words went from 5 to 6: drop the kept lists so each word asks the server again.
+      await tx.execAsync('DELETE FROM related_words;');
     }
     await tx.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });
