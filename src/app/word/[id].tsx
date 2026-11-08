@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,24 +10,26 @@ import { CategoryPicker } from '@/components/category-picker';
 import { FuriganaText } from '@/components/furigana-text';
 import { StarButton } from '@/components/mascot';
 import { Card, EmptyState, Icon, IconButton, LabelButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
-import { isWordSeen, setWordsSeen } from '@/db/dictionary';
+import { applyDictionary, isWordSeen, setWordsSeen } from '@/db/dictionary';
 import {
   addSentences,
   countUnseenSentences,
   deleteSentence,
   getAllSentences,
+  getMeaningRelated,
   deleteWord,
   getRelatedWords,
   getShownSentences,
   getWord,
   revealNextSentence,
+  setMeaningRelated,
   setSentenceFavorite,
   setWordCategory,
   setWordSaved,
   setWordStarred,
 } from '@/db/queries';
 import type { ChineseLinkKind, RelatedWord, Sentence, Word } from '@/db/types';
-import { generateWordSentences } from '@/lib/ai';
+import { fetchRelated, generateWordSentences } from '@/lib/ai';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { showAlert } from '@/lib/alert';
 import { isWordCategory } from '@/lib/categories';
@@ -49,8 +51,9 @@ const ZH_LINK_STYLE: Record<ChineseLinkKind, { icon: IconName; tone: 'matcha' | 
 /** How many examples show before "Show all". */
 const FOLDED_EXAMPLES = 3;
 
-const RELATION_ORDER: RelatedWord['kind'][] = ['synonym', 'antonym', 'confusing', 'shared-kanji'];
+const RELATION_ORDER: RelatedWord['kind'][] = ['meaning', 'synonym', 'antonym', 'confusing', 'shared-kanji'];
 const RELATION_ICON: Record<RelatedWord['kind'], IconName> = {
+  meaning: 'auto-awesome',
   synonym: 'compare-arrows',
   antonym: 'swap-horiz',
   confusing: 'warning',
@@ -72,6 +75,10 @@ export default function WordDetailScreen() {
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [unseen, setUnseen] = useState(0);
   const [related, setRelated] = useState<RelatedWord[]>([]);
+  /** Words related in meaning (from the AI, kept on the phone); null until known. */
+  const [meaningRelated, setMeaningRelatedWords] = useState<Word[] | null>(null);
+  const [findingRelated, setFindingRelated] = useState(false);
+  const askedRelated = useRef(false);
   const [generating, setGenerating] = useState(false);
   /** The examples list shows only the first few until opened. */
   const [expanded, setExpanded] = useState(false);
@@ -85,6 +92,22 @@ export default function WordDetailScreen() {
     setWord(loaded);
     if (!loaded) return;
     setRelated(await getRelatedWords(db, loaded));
+    const kept = await getMeaningRelated(db, loaded);
+    setMeaningRelatedWords(kept);
+    if (kept === null && !askedRelated.current) {
+      // The first time: ask the server (it works each word out once, for everyone), then keep it.
+      askedRelated.current = true;
+      setFindingRelated(true);
+      fetchRelated({ word: loaded.word, reading: loaded.reading, meaning: loaded.meaningEn, jlpt: loaded.jlpt })
+        .then(async (entries) => {
+          await applyDictionary(db, entries);
+          await setMeaningRelated(db, loaded, entries);
+          setMeaningRelatedWords(await getMeaningRelated(db, loaded));
+        })
+        // Offline or not signed in: try again next time the word is opened.
+        .catch(() => {})
+        .finally(() => setFindingRelated(false));
+    }
     setSeen(await isWordSeen(db, loaded));
     let shown = await getShownSentences(db, wordId);
     // First visit: reveal the first example so the section is never empty.
@@ -185,9 +208,10 @@ export default function WordDetailScreen() {
     );
   };
 
+  const allRelated: RelatedWord[] = [...(meaningRelated ?? []).map((w) => ({ kind: 'meaning' as const, word: w })), ...related];
   const groups = RELATION_ORDER.map((kind) => ({
     kind,
-    words: related.filter((r) => r.kind === kind).map((r) => r.word),
+    words: allRelated.filter((r) => r.kind === kind).map((r) => r.word),
   })).filter((group) => group.words.length > 0);
 
   const zhNote = zh ? word.zhNoteZh : word.zhNoteEn;
@@ -358,8 +382,13 @@ export default function WordDetailScreen() {
         {/* 5. Related words */}
         <Card>
           <SectionHeader title={t('word.relatedTitle')} />
+          {findingRelated ? (
+            <Text className="text-[12px] text-ink-muted">{t('word.findingRelated')}</Text>
+          ) : null}
           {groups.length === 0 ? (
-            <EmptyState message={t('word.relatedEmpty')} />
+            findingRelated ? null : (
+              <EmptyState message={t('word.relatedEmpty')} />
+            )
           ) : (
             <View className="gap-4">
               {groups.map((group) => (

@@ -99,6 +99,7 @@ const en = {
     'false-friend': 'False friend',
   },
   relation: {
+    meaning: 'Related in meaning',
     synonym: 'Synonyms',
     antonym: 'Antonyms',
     confusing: 'Easily confused',
@@ -227,6 +228,7 @@ const en = {
     noMoreExamples: "That's every example for this word",
     favorite: 'Save sentence',
     relatedTitle: 'Related words',
+    findingRelated: 'Finding related words…',
     relatedEmpty: 'No related words yet.',
     notesTitle: 'Notes',
     notesPlaceholder: 'Write a memory hook, or where you saw this word…',

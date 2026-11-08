@@ -1,3 +1,4 @@
+import type { DictionaryEntry } from '@/db/dictionary';
 import type { ChineseLinkKind, JlptLevel, PartOfSpeech, Topic, VerbGroup, WordInput } from '@/db/types';
 
 import { apiFetch } from './api';
@@ -77,6 +78,17 @@ export async function generateWordSentences(word: {
 }): Promise<AiSentence[]> {
   const { sentences } = await apiFetch<{ sentences: AiSentence[] }>('/ai/word-sentences', { method: 'POST', body: word });
   return sentences;
+}
+
+/** Five words related in meaning (dictionary entries; new ones may have just been added). */
+export async function fetchRelated(word: {
+  word: string;
+  reading: string;
+  meaning: string;
+  jlpt: number | null;
+}): Promise<DictionaryEntry[]> {
+  const { entries } = await apiFetch<{ entries: DictionaryEntry[] }>('/ai/related', { method: 'POST', body: word });
+  return entries;
 }
 
 /** Categories for words still in その他. */

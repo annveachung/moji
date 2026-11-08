@@ -77,7 +77,7 @@ export type Sentence = {
 };
 
 export type RelatedWord = {
-  kind: RelationKind | 'shared-kanji';
+  kind: RelationKind | 'shared-kanji' | 'meaning';
   word: Word;
 };
 

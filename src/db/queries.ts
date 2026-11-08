@@ -445,6 +445,8 @@ export async function deleteWord(db: SQLiteDatabase, id: number) {
  * Words connected to this one: hand-picked relations (in either direction),
  * then other words that share a kanji with it.
  */
+const SHARED_KANJI_COUNT = 5;
+
 export async function getRelatedWords(db: SQLiteDatabase, word: Word): Promise<RelatedWord[]> {
   const relations = await db.getAllAsync<WordRow & { kind: RelationKind }>(
     `SELECT w.*, r.kind FROM word_relations r
@@ -456,16 +458,45 @@ export async function getRelatedWords(db: SQLiteDatabase, word: Word): Promise<R
 
   const kanji = kanjiIn(word.word);
   if (kanji.length > 0) {
+    // A few, best first: your saved words, then easier levels, then shorter words.
     const shared = await db.getAllAsync<WordRow>(
-      `SELECT * FROM words WHERE id != ? AND (${kanji.map(() => 'word LIKE ?').join(' OR ')})`,
+      `SELECT * FROM words WHERE id != ? AND (${kanji.map(() => 'word LIKE ?').join(' OR ')})
+        ORDER BY saved_at IS NULL, COALESCE(jlpt, 0) DESC, length(word), id
+        LIMIT ${SHARED_KANJI_COUNT + related.length}`,
       word.id, ...kanji.map((k) => `%${k}%`),
     );
     const alreadyListed = new Set(related.map((r) => r.word.id));
-    for (const row of shared) {
-      if (!alreadyListed.has(row.id)) related.push({ kind: 'shared-kanji', word: toWord(row) });
-    }
+    const fresh = shared.filter((row) => !alreadyListed.has(row.id)).slice(0, SHARED_KANJI_COUNT);
+    for (const row of fresh) related.push({ kind: 'shared-kanji', word: toWord(row) });
   }
   return related;
+}
+
+/** The words related in meaning that were kept for this word, or null if not fetched yet. */
+export async function getMeaningRelated(db: SQLiteDatabase, word: Word): Promise<Word[] | null> {
+  const row = await db.getFirstAsync<{ related: string }>(
+    'SELECT related FROM related_words WHERE word = ? AND reading = ?',
+    word.word, word.reading,
+  );
+  if (!row) return null;
+  const pairs = JSON.parse(row.related) as { word: string; reading: string }[];
+  const words: Word[] = [];
+  for (const pair of pairs) {
+    // Your own copy if you have one, else the dictionary's.
+    const found = await db.getFirstAsync<WordRow>(
+      'SELECT * FROM words WHERE word = ? AND reading = ? ORDER BY is_custom DESC, saved_at IS NULL LIMIT 1',
+      pair.word, pair.reading,
+    );
+    if (found && found.id !== word.id) words.push(toWord(found));
+  }
+  return words;
+}
+
+export async function setMeaningRelated(db: SQLiteDatabase, word: Word, related: { word: string; reading: string }[]) {
+  await db.runAsync(
+    'INSERT INTO related_words (word, reading, related) VALUES (?, ?, ?) ON CONFLICT (word, reading) DO UPDATE SET related = excluded.related',
+    word.word, word.reading, JSON.stringify(related.map((r) => ({ word: r.word, reading: r.reading }))),
+  );
 }
 
 // ── Sentences ────────────────────────────────────────────────

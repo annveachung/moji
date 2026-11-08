@@ -102,6 +102,7 @@ const zhTW: typeof en = {
     'false-friend': '假朋友・易誤會',
   },
   relation: {
+    meaning: '意思相關',
     synonym: '近義詞',
     antonym: '反義詞',
     confusing: '易混淆',
@@ -230,6 +231,7 @@ const zhTW: typeof en = {
     noMoreExamples: '這個單字的例句都看過了',
     favorite: '收藏例句',
     relatedTitle: '相關單字',
+    findingRelated: '正在尋找相關的詞…',
     relatedEmpty: '目前還沒有相關單字。',
     notesTitle: '學習筆記',
     notesPlaceholder: '寫下記憶法，或在哪裡看到這個字…',
