@@ -103,6 +103,7 @@ const ja: typeof en = {
     'false-friend': '要注意！意味が違う',
   },
   relation: {
+    meaning: '意味が近いことば',
     synonym: '類義語',
     antonym: '対義語',
     confusing: '紛らわしい言葉',
@@ -231,6 +232,7 @@ const ja: typeof en = {
     noMoreExamples: 'この単語の例文はすべて表示しました',
     favorite: '例文を保存',
     relatedTitle: '関連語',
+    findingRelated: '関連することばを探しています…',
     relatedEmpty: '関連語はまだありません。',
     notesTitle: '学習メモ',
     notesPlaceholder: '覚え方や、どこで見かけたかをメモしよう…',
