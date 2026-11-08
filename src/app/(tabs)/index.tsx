@@ -10,7 +10,7 @@ import { WalkingMascot } from '@/components/mascot';
 import { QuickAdd } from '@/components/quick-add';
 import { WordFilters } from '@/components/word-filters';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
-import { EmptyState, Icon, LabelButton, type IconName } from '@/components/ui';
+import { ClearFilters, EmptyState, Icon, LabelButton, type IconName } from '@/components/ui';
 import {
   applyImport,
   getAllLibraryWords,
@@ -175,7 +175,7 @@ export default function LibraryScreen() {
           ) : null
         }
       />
-
+      {filtering ? <ClearFilters label={t('common.clearFilters')} onPress={() => setFilters(NO_FILTERS)} /> : null}
 
       {words !== null && words.length > 0 ? (
         <View className="flex-row items-center justify-between px-1">

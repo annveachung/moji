@@ -40,7 +40,7 @@ function TagPill({
       hitSlop={4}
       onPress={onPress}
       style={maxWidth !== undefined ? { maxWidth } : undefined}>
-      <Pill label={label} tone={active ? 'primary' : tone} icon={active ? 'filter-alt' : undefined} maxWidth={maxWidth} />
+      <Pill label={label} tone={active ? 'primary' : tone} maxWidth={maxWidth} />
     </Pressable>
   );
 }
