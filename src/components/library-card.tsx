@@ -4,16 +4,14 @@ import { Pressable, Text, View } from 'react-native';
 
 import type { LibraryFilters, LibraryWord } from '@/db/types';
 import { meaningFor, translationFor } from '@/lib/meaning';
-import { relativeDay } from '@/lib/relative-time';
 import { speakJapanese } from '@/lib/speech';
 import { posLabel } from '@/lib/verb';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
-import colors from '@/theme/colors';
 
 import { FuriganaText } from './furigana-text';
 import { Mascot, StarButton } from './mascot';
-import { Icon, IconButton, Pill, TagRow, type PillTone } from './ui';
+import { IconButton, Pill, TagRow, type PillTone } from './ui';
 
 type Props = { word: LibraryWord; onToggleStar: () => void };
 
@@ -152,15 +150,6 @@ export function LibraryCard({
             {word.example ? translationFor(word.example, settings.meaningLanguage) : ' '}
           </Text>
         </View>
-      </View>
-
-      <View className="flex-row items-center gap-1">
-        <Icon name="schedule" size={13} color={colors.ink.muted} />
-        <Text className="font-display-medium text-[11px] text-ink-muted">
-          {word.lastReviewedAt
-            ? t('library.lastReviewed', { when: relativeDay(word.lastReviewedAt, t) })
-            : t('library.added', { when: relativeDay(word.savedAt ?? word.createdAt, t) })}
-        </Text>
       </View>
     </Pressable>
   );
