@@ -99,11 +99,11 @@ const en = {
     'false-friend': 'False friend',
   },
   relation: {
-    meaning: 'Related in meaning',
+    meaning: 'Synonyms',
     synonym: 'Synonyms',
     antonym: 'Antonyms',
     confusing: 'Easily confused',
-    'shared-kanji': 'Shares a kanji',
+    'shared-kanji': 'Same kanji',
   },
   library: {
     searchPlaceholder: 'Search word, reading or meaning',

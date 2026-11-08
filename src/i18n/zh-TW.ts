@@ -102,11 +102,11 @@ const zhTW: typeof en = {
     'false-friend': '假朋友・易誤會',
   },
   relation: {
-    meaning: '意思相關',
+    meaning: '近義詞',
     synonym: '近義詞',
     antonym: '反義詞',
     confusing: '易混淆',
-    'shared-kanji': '共用漢字',
+    'shared-kanji': '相同漢字',
   },
   library: {
     searchPlaceholder: '搜尋單字、讀音或意思',

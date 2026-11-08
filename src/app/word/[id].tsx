@@ -51,7 +51,9 @@ const ZH_LINK_STYLE: Record<ChineseLinkKind, { icon: IconName; tone: 'matcha' | 
 /** How many examples show before "Show all". */
 const FOLDED_EXAMPLES = 3;
 
-const RELATION_ORDER: RelatedWord['kind'][] = ['meaning', 'synonym', 'antonym', 'confusing', 'shared-kanji'];
+/** Two groups: words close in meaning (hand-picked ones first, then the AI's), and words with the same kanji. */
+const RELATION_ORDER: RelatedWord['kind'][] = ['meaning', 'shared-kanji'];
+const GROUP_SIZE = 6;
 const RELATION_ICON: Record<RelatedWord['kind'], IconName> = {
   meaning: 'auto-awesome',
   synonym: 'compare-arrows',
@@ -208,11 +210,12 @@ export default function WordDetailScreen() {
     );
   };
 
-  const allRelated: RelatedWord[] = [...(meaningRelated ?? []).map((w) => ({ kind: 'meaning' as const, word: w })), ...related];
-  const groups = RELATION_ORDER.map((kind) => ({
-    kind,
-    words: allRelated.filter((r) => r.kind === kind).map((r) => r.word),
-  })).filter((group) => group.words.length > 0);
+  const close = [...related.filter((r) => r.kind !== 'shared-kanji').map((r) => r.word), ...(meaningRelated ?? [])];
+  const byKind: Record<string, Word[]> = {
+    meaning: close.filter((w, i) => close.findIndex((other) => other.id === w.id) === i).slice(0, GROUP_SIZE),
+    'shared-kanji': related.filter((r) => r.kind === 'shared-kanji').map((r) => r.word),
+  };
+  const groups = RELATION_ORDER.map((kind) => ({ kind, words: byKind[kind] ?? [] })).filter((group) => group.words.length > 0);
 
   const zhNote = zh ? word.zhNoteZh : word.zhNoteEn;
 
@@ -397,7 +400,7 @@ export default function WordDetailScreen() {
                     <Icon
                       name={RELATION_ICON[group.kind]}
                       size={16}
-                      color={group.kind === 'confusing' ? colors.error.DEFAULT : colors.primary.DEFAULT}
+                      color={colors.primary.DEFAULT}
                     />
                     <Text className="font-display text-[12px] text-ink">{t(`relation.${group.kind}`)}</Text>
                   </View>
