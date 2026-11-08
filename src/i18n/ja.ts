@@ -103,7 +103,7 @@ const ja: typeof en = {
     'false-friend': '要注意！意味が違う',
   },
   relation: {
-    meaning: '意味が近いことば',
+    meaning: '類義語',
     synonym: '類義語',
     antonym: '対義語',
     confusing: '紛らわしい言葉',
