@@ -23,6 +23,7 @@ import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
 
+import { CardWord } from './furigana-text';
 import { Icon, IconButton, TwoColumnGrid } from './ui';
 
 /**
@@ -241,14 +242,7 @@ export function WordCardFrame({
         accessibilityLabel={`${word} ${reading}`}
         onPress={onPress}
         className="flex-1 active:opacity-70">
-        {settings.showFurigana ? (
-          <Text numberOfLines={1} className="h-[14px] text-[10px] font-semibold leading-[14px] tracking-wider text-primary">
-            {reading !== word ? reading : ''}
-          </Text>
-        ) : null}
-        <Text numberOfLines={1} adjustsFontSizeToFit className="text-[22px] font-bold leading-[30px] text-ink">
-          {word}
-        </Text>
+        <CardWord word={word} reading={reading} size={22} showFurigana={settings.showFurigana} />
         <Text numberOfLines={2} className="h-8 text-[12px] leading-4 text-ink-soft">
           {meaning}
         </Text>

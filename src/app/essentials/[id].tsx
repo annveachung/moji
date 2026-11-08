@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WordCardFrame } from '@/components/ai-suggestions';
 import { AppHeader } from '@/components/app-header';
-import { FuriganaText } from '@/components/furigana-text';
+import { CardWord, FuriganaText } from '@/components/furigana-text';
 import { EmptyState, Icon, IconButton, TwoColumnGrid } from '@/components/ui';
 import { findDuplicate, getSavedWordKeys, getSetting, insertWord, setSetting, setWordSaved } from '@/db/queries';
 import { generateWordSentences, type AiSentence } from '@/lib/ai';
@@ -237,11 +237,8 @@ function ExamplesSheet({ word, onClose }: { word: EssentialWord; onClose: () => 
             accessibilityRole="button"
             onPress={() => speakJapanese(word.reading)}
             className="gap-1 rounded-2xl bg-card p-4 shadow-sm shadow-ink/10 active:opacity-80">
-            {word.reading !== word.word ? (
-              <Text className="text-[12px] font-semibold tracking-wider text-primary">{word.reading}</Text>
-            ) : null}
-            <View className="flex-row items-center gap-2">
-              <Text className="text-[28px] font-bold text-ink">{word.word}</Text>
+            <View className="flex-row items-end gap-2">
+              <CardWord word={word.word} reading={word.reading} size={28} showFurigana={settings.showFurigana} />
               <Icon name="volume-up" size={20} color={colors.ink.muted} />
             </View>
             <Text className="text-[15px] text-ink">{zh ? word.zh : word.en}</Text>

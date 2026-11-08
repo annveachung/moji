@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
 import { CategoryPicker } from '@/components/category-picker';
-import { FuriganaText } from '@/components/furigana-text';
+import { CardWord, FuriganaText } from '@/components/furigana-text';
 import { StarButton } from '@/components/mascot';
 import { Card, EmptyState, Icon, IconButton, LabelButton, Pill, SectionHeader, StampButton, TwoColumnGrid, type IconName } from '@/components/ui';
 import { applyDictionary, isWordSeen, setWordsSeen } from '@/db/dictionary';
@@ -470,14 +470,7 @@ function RelatedCard({ word, onPress }: { word: Word; onPress: () => void }) {
       accessibilityLabel={`${word.word} ${word.reading}`}
       onPress={onPress}
       className="flex-1 rounded-2xl bg-surface-low p-2.5 active:opacity-70">
-      {settings.showFurigana ? (
-        <Text numberOfLines={1} className="h-[13px] text-[9px] font-semibold leading-[13px] tracking-wider text-primary">
-          {word.reading !== word.word ? word.reading : ''}
-        </Text>
-      ) : null}
-      <Text numberOfLines={1} adjustsFontSizeToFit className="text-[18px] font-bold leading-[24px] text-ink">
-        {word.word}
-      </Text>
+      <CardWord word={word.word} reading={word.reading} furigana={word.furigana} size={18} showFurigana={settings.showFurigana} />
       <Text numberOfLines={2} className="h-[30px] text-[11px] leading-[15px] text-ink-soft">
         {meaningFor(word, settings.meaningLanguage)}
       </Text>
