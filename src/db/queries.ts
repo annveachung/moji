@@ -445,7 +445,7 @@ export async function deleteWord(db: SQLiteDatabase, id: number) {
  * Words connected to this one: hand-picked relations (in either direction),
  * then other words that share a kanji with it.
  */
-const SHARED_KANJI_COUNT = 5;
+const SHARED_KANJI_COUNT = 6;
 
 export async function getRelatedWords(db: SQLiteDatabase, word: Word): Promise<RelatedWord[]> {
   const relations = await db.getAllAsync<WordRow & { kind: RelationKind }>(
