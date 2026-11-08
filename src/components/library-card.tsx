@@ -9,7 +9,7 @@ import { posLabel } from '@/lib/verb';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 
-import { FuriganaText } from './furigana-text';
+import { CardWord, FuriganaText } from './furigana-text';
 import { Mascot, StarButton } from './mascot';
 import { IconButton, Pill, TagRow, type PillTone } from './ui';
 
@@ -66,7 +66,6 @@ export function LibraryCard({
   const { topicLabel } = useSync();
   const { settings } = useSettings();
   const open = useOpen(word.id);
-  const kanaOnly = word.reading === word.word;
 
   return (
     // A link, not a button: on the web a button can't hold the card's own buttons (star, tags, listen).
@@ -121,14 +120,7 @@ export function LibraryCard({
       {/* Every part below has a fixed number of lines (longer text ends in "…"), so all cards are the same size. */}
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-1">
-          {settings.showFurigana ? (
-            <Text numberOfLines={1} className="h-4 text-[12px] font-semibold leading-4 tracking-widest text-primary">
-              {kanaOnly ? '' : word.reading}
-            </Text>
-          ) : null}
-          <Text numberOfLines={1} className="text-[28px] font-bold leading-9 text-ink">
-            {word.word}
-          </Text>
+          <CardWord word={word.word} reading={word.reading} furigana={word.furigana} size={28} showFurigana={settings.showFurigana} />
         </View>
         <IconButton icon="volume-up" tone="quiet" label={t('word.listen')} onPress={() => speakJapanese(word.reading)} />
       </View>
@@ -160,7 +152,6 @@ export function LibraryTile({ word, onToggleStar }: Props) {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const open = useOpen(word.id);
-  const kanaOnly = word.reading === word.word;
 
   return (
     // A link, not a button: on the web a button can't hold the card's own buttons (star, tags, listen).
@@ -171,14 +162,7 @@ export function LibraryTile({ word, onToggleStar }: Props) {
       className="flex-1 gap-1 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
       <View className="flex-row items-start justify-between">
         <View className="flex-1">
-          {settings.showFurigana ? (
-            <Text numberOfLines={1} className="h-[14px] text-[10px] font-semibold leading-[14px] tracking-wider text-primary">
-              {kanaOnly ? '' : word.reading}
-            </Text>
-          ) : null}
-          <Text numberOfLines={1} className="text-[22px] font-bold text-ink">
-            {word.word}
-          </Text>
+          <CardWord word={word.word} reading={word.reading} furigana={word.furigana} size={22} showFurigana={settings.showFurigana} />
         </View>
         <Pressable
           accessibilityRole="button"
