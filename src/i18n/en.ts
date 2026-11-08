@@ -7,6 +7,7 @@ const en = {
     settings: 'Settings',
   },
   common: {
+    clearFilters: 'Clear filters',
     import: 'Import',
     export: 'Export',
     done: 'Done',

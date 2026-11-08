@@ -11,6 +11,7 @@ const ja: typeof en = {
     settings: '設定',
   },
   common: {
+    clearFilters: 'フィルターを解除',
     import: 'インポート',
     export: 'エクスポート',
     done: '完了',

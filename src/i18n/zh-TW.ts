@@ -10,6 +10,7 @@ const zhTW: typeof en = {
     settings: '設定',
   },
   common: {
+    clearFilters: '清除篩選',
     import: '匯入',
     export: '匯出',
     done: '完成',

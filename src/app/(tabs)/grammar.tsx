@@ -8,7 +8,7 @@ import { AppHeader } from '@/components/app-header';
 import { DailyReading } from '@/components/daily-reading';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
 import { StarButton } from '@/components/mascot';
-import { Card, Chip, EmptyState, Icon, LabelButton, Pill, SectionHeader, type IconName } from '@/components/ui';
+import { Card, Chip, ClearFilters, EmptyState, Icon, LabelButton, Pill, SectionHeader, type IconName } from '@/components/ui';
 import {
   applyGrammarImport,
   getGrammarRules,
@@ -161,6 +161,17 @@ export default function GrammarScreen() {
         </Pressable>
       ) : null}
 
+      {filtering ? (
+        <ClearFilters
+          label={t('common.clearFilters')}
+          onPress={() => {
+            setSearch('');
+            setLevel(null);
+            setFn(null);
+          }}
+        />
+      ) : null}
+
       {rules !== null && rules.length > 0 ? (
         <Text className="px-1 font-display-semibold text-[12px] text-ink-soft">
           {t('grammar.count', { count: rules.length })}
@@ -251,7 +262,6 @@ function GrammarCard({
             <Pill
               label={t(`grammarFn.${rule.category}`)}
               tone={activeFn === rule.category ? 'primary' : 'outline'}
-              icon={activeFn === rule.category ? 'filter-alt' : undefined}
             />
           </Pressable>
         ) : null}

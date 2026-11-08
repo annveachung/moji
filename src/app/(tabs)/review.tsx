@@ -7,7 +7,7 @@ import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 import { AppHeader } from '@/components/app-header';
 import { LibraryCard } from '@/components/library-card';
 import { StarButton } from '@/components/mascot';
-import { Chip, EmptyState, IconButton, Pill, StampButton } from '@/components/ui';
+import { Chip, ClearFilters, EmptyState, IconButton, Pill, StampButton } from '@/components/ui';
 import { WordFilters } from '@/components/word-filters';
 import { getStarredGrammar, setGrammarStarred } from '@/db/grammar';
 import { getLibrary, setWordStarred } from '@/db/queries';
@@ -108,6 +108,16 @@ export default function ReviewScreen() {
                   <Chip key={fn} label={t(`grammarFn.${fn}`)} selected={grammarFn === fn} onPress={() => pickFn(fn)} />
                 ))}
               </ScrollView>
+            ) : null}
+            {(section === 'words' && filtering) || (section === 'grammar' && (grammarLevel !== null || grammarFn !== null)) ? (
+              <ClearFilters
+                label={t('common.clearFilters')}
+                onPress={() => {
+                  setFilters(STARRED);
+                  setGrammarLevel(null);
+                  setGrammarFn(null);
+                }}
+              />
             ) : null}
           </View>
         }
@@ -224,7 +234,6 @@ function StarredRule({
             <Pill
               label={`N${rule.jlpt}`}
               tone={activeLevel === rule.jlpt ? 'primary' : 'mustard'}
-              icon={activeLevel === rule.jlpt ? 'filter-alt' : undefined}
             />
           </Pressable>
         ) : null}
@@ -237,7 +246,6 @@ function StarredRule({
             <Pill
               label={t(`grammarFn.${rule.category}`)}
               tone={activeFn === rule.category ? 'primary' : 'outline'}
-              icon={activeFn === rule.category ? 'filter-alt' : undefined}
             />
           </Pressable>
         ) : null}

@@ -255,6 +255,20 @@ export function LabelButton({
   );
 }
 
+/** "✕ Clear filters", shown while any filter is on. */
+export function ClearFilters({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={6}
+      className="flex-row items-center gap-1 self-start rounded-full bg-primary-soft px-3 py-1.5 active:opacity-70">
+      <Icon name="close" size={14} color={colors.primary.DEFAULT} />
+      <Text className="font-display-semibold text-[12px] text-primary">{label}</Text>
+    </Pressable>
+  );
+}
+
 /** Title row at the top of a card: a small colored bar, the title, and an optional right side. */
 export function SectionHeader({
   title,
