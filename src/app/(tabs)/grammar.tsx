@@ -8,22 +8,28 @@ import { AppHeader } from '@/components/app-header';
 import { DailyReading } from '@/components/daily-reading';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
 import { StarButton } from '@/components/mascot';
-import { Card, Chip, ClearFilters, EmptyState, Icon, LabelButton, Pill, SectionHeader, type IconName } from '@/components/ui';
+import { Card, Chip, ClearFilters, EmptyState, Icon, IconButton, LabelButton, Pill, SectionHeader, ViewToggle, type IconName } from '@/components/ui';
 import {
   applyGrammarImport,
+  deleteGrammarSentence,
   getGrammarRules,
   planGrammarImport,
+  saveGrammarSentence,
   setGrammarStarred,
   type GrammarImportPlan,
 } from '@/db/grammar';
 import type { GrammarRule, JlptLevel } from '@/db/types';
+import { generateGrammarSentence } from '@/lib/ai';
+import { aiErrorMessage } from '@/lib/ai-errors';
 import { showAlert } from '@/lib/alert';
 import { GRAMMAR_FUNCTIONS, type GrammarFunction } from '@/lib/categories';
 import { pickCsvText } from '@/lib/file-io';
 import { useSortGrammar } from '@/lib/use-sort-grammar';
 import { padRows, useLayout } from '@/lib/layout';
 import { csvToGrammar, type GrammarCsvProblem } from '@/lib/grammar-csv';
-import { meaningFor } from '@/lib/meaning';
+import { highlightPattern } from '@/lib/grammar-highlight';
+import { meaningFor, translationFor } from '@/lib/meaning';
+import { speakJapanese } from '@/lib/speech';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
@@ -33,8 +39,9 @@ const LEVELS: JlptLevel[] = [5, 4, 3, 2, 1];
 type Importing = { plan: GrammarImportPlan; problems: GrammarCsvProblem[]; unknownColumns: string[] };
 
 /**
- * 文法: grammar rules N5 → N1, imported from your spreadsheet. At the top, a daily
- * reading (easy NHK news + a short AI reading) once the AI server is ready.
+ * 文法: grammar N5 → N1, from moji's shared list and your own spreadsheet. At the top, a daily
+ * reading (easy NHK news + a short AI reading). Cards come as a list (with one example each)
+ * or a compact grid.
  */
 export default function GrammarScreen() {
   const db = useSQLiteContext();
@@ -46,6 +53,9 @@ export default function GrammarScreen() {
   const [fn, setFn] = useState<GrammarFunction | 'other' | null>(null);
   const [rules, setRules] = useState<GrammarRule[] | null>(null);
   const [importing, setImporting] = useState<Importing | null>(null);
+  const [view, setView] = useState<'list' | 'grid'>('list');
+  /** The rule whose example the AI is writing right now. */
+  const [regenerating, setRegenerating] = useState<number | null>(null);
 
   const { dataVersion } = useSync();
   const layout = useLayout();
@@ -70,6 +80,36 @@ export default function GrammarScreen() {
     await setGrammarStarred(db, rule.id, rule.starredAt === null);
     load();
   };
+
+  /** A new example from the AI takes the place of the one on the card. */
+  const regenerate = async (rule: GrammarRule) => {
+    setRegenerating(rule.id);
+    try {
+      const fresh = await generateGrammarSentence({
+        pattern: rule.pattern,
+        meaning: rule.meaningEn,
+        formation: rule.formation,
+        jlpt: rule.jlpt,
+        avoid: rule.example ? [rule.example.ja] : [],
+      });
+      await saveGrammarSentence(db, rule.id, fresh, 'ai');
+      if (rule.example) await deleteGrammarSentence(db, rule.example.id);
+      load();
+    } catch (error) {
+      showAlert(t('grammar.examples'), aiErrorMessage(t, error));
+    } finally {
+      setRegenerating(null);
+    }
+  };
+
+  const removeExample = async (rule: GrammarRule) => {
+    if (!rule.example) return;
+    await deleteGrammarSentence(db, rule.example.id);
+    load();
+  };
+
+  // Cards per row: list view 1 → 3 as the window widens; the compact grid view one more.
+  const columns = view === 'grid' ? layout.columns + 1 : layout.columns;
 
   /** Pick a CSV, read it, and open the review sheet. Nothing is saved until you confirm. */
   const importCsv = async () => {
@@ -173,9 +213,13 @@ export default function GrammarScreen() {
       ) : null}
 
       {rules !== null && rules.length > 0 ? (
-        <Text className="px-1 font-display-semibold text-[12px] text-ink-soft">
-          {t('grammar.count', { count: rules.length })}
-        </Text>
+        <View className="flex-row items-center justify-between px-1">
+          <Text className="font-display-semibold text-[12px] text-ink-soft">{t('grammar.count', { count: rules.length })}</Text>
+          <View className="flex-row rounded-xl bg-surface-high p-0.5">
+            <ViewToggle icon="view-agenda" label={t('library.listView')} selected={view === 'list'} onPress={() => setView('list')} />
+            <ViewToggle icon="grid-view" label={t('library.gridView')} selected={view === 'grid'} onPress={() => setView('grid')} />
+          </View>
+        </View>
       ) : null}
     </View>
   );
@@ -192,10 +236,10 @@ export default function GrammarScreen() {
         <ImportSheet review={toReview(importing)} onCancel={() => setImporting(null)} onConfirm={confirmImport} />
       ) : null}
       <FlatList
-        key={layout.columns}
-        numColumns={layout.columns}
-        columnWrapperClassName={layout.columns > 1 ? 'gap-3' : undefined}
-        data={padRows(rules ?? [], layout.columns)}
+        key={`${view}-${columns}`}
+        numColumns={columns}
+        columnWrapperClassName={columns > 1 ? 'gap-3' : undefined}
+        data={padRows(rules ?? [], columns)}
         keyExtractor={(rule, index) => (rule ? String(rule.id) : `empty-${index}`)}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
@@ -211,10 +255,20 @@ export default function GrammarScreen() {
           ) : undefined
         }
         renderItem={({ item }) => (
-          <View style={layout.columns > 1 ? { flex: 1 } : undefined}>
-            {item ? (
-              <GrammarCard rule={item} onToggleStar={() => toggleStar(item)} activeFn={fn} onFn={pickFn} />
-            ) : null}
+          <View style={columns > 1 ? { flex: 1 } : undefined}>
+            {item === null ? null : view === 'grid' ? (
+              <GrammarTile rule={item} onToggleStar={() => toggleStar(item)} />
+            ) : (
+              <GrammarCard
+                rule={item}
+                onToggleStar={() => toggleStar(item)}
+                activeFn={fn}
+                onFn={pickFn}
+                regenerating={regenerating === item.id}
+                onRegenerate={() => regenerate(item)}
+                onRemoveExample={() => removeExample(item)}
+              />
+            )}
           </View>
         )}
       />
@@ -222,26 +276,34 @@ export default function GrammarScreen() {
   );
 }
 
-/** One rule in the list: pattern, level, ⭐, meaning, formation and how many examples. */
+/** One rule in the list view: pattern, level, ⭐, meaning, function, formation, and one example to listen to, swap or remove. */
 function GrammarCard({
   rule,
   onToggleStar,
   activeFn,
   onFn,
+  regenerating,
+  onRegenerate,
+  onRemoveExample,
 }: {
   rule: GrammarRule;
   onToggleStar: () => void;
   activeFn: GrammarFunction | 'other' | null;
   /** Tap the function tag to show only that kind of pattern. */
   onFn: (fn: GrammarFunction | 'other') => void;
+  regenerating: boolean;
+  onRegenerate: () => void;
+  onRemoveExample: () => void;
 }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { settings } = useSettings();
+  const example = rule.example;
 
   return (
+    // A link, not a button: on the web a button can't hold the card's own buttons.
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={rule.pattern}
       onPress={() => router.push({ pathname: '/grammar/[id]', params: { id: String(rule.id) } })}
       className="gap-2 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
@@ -259,10 +321,7 @@ function GrammarCard({
       <View className="flex-row flex-wrap items-center gap-1.5">
         {rule.category ? (
           <Pressable accessibilityRole="button" hitSlop={4} onPress={() => onFn(rule.category!)}>
-            <Pill
-              label={t(`grammarFn.${rule.category}`)}
-              tone={activeFn === rule.category ? 'primary' : 'outline'}
-            />
+            <Pill label={t(`grammarFn.${rule.category}`)} tone={activeFn === rule.category ? 'primary' : 'outline'} />
           </Pressable>
         ) : null}
         {rule.formation ? (
@@ -271,14 +330,69 @@ function GrammarCard({
           </View>
         ) : null}
       </View>
-      {rule.sentenceCount > 0 ? (
-        <View className="flex-row items-center gap-1">
-          <Icon name="format-quote" size={14} color={colors.ink.muted} />
-          <Text className="font-display-medium text-[11px] text-ink-muted">
-            {t('grammar.sentences', { count: rule.sentenceCount })}
-          </Text>
+
+      <View className="gap-1 rounded-xl bg-surface-low p-3">
+        {example ? (
+          <>
+            <Text className="text-[15px] leading-6 text-ink">
+              {highlightPattern(example.ja, rule.pattern).map((part, i) => (
+                <Text key={i} className={part.match ? 'font-bold text-primary' : undefined}>
+                  {part.text}
+                </Text>
+              ))}
+            </Text>
+            <Text className="text-[12px] leading-4 text-ink-soft">{translationFor(example, settings.meaningLanguage)}</Text>
+          </>
+        ) : (
+          <Text className="text-[12px] text-ink-muted">{t('grammar.noExample')}</Text>
+        )}
+        <View className="flex-row items-center justify-end gap-1">
+          {example ? (
+            <IconButton icon="volume-up" tone="quiet" size={30} label={t('word.listen')} onPress={() => speakJapanese(example.ja)} />
+          ) : null}
+          <IconButton
+            icon={regenerating ? 'hourglass-empty' : 'refresh'}
+            tone="quiet"
+            size={30}
+            label={t('word.regenerate')}
+            disabled={regenerating}
+            onPress={onRegenerate}
+          />
+          {example ? (
+            <IconButton icon="close" tone="quiet" size={30} label={t('word.removeExample')} onPress={onRemoveExample} />
+          ) : null}
         </View>
-      ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+/** One rule in the compact grid: pattern, level, ⭐ and meaning. */
+function GrammarTile({ rule, onToggleStar }: { rule: GrammarRule; onToggleStar: () => void }) {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { settings } = useSettings();
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={rule.pattern}
+      onPress={() => router.push({ pathname: '/grammar/[id]', params: { id: String(rule.id) } })}
+      className="flex-1 gap-1 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
+      <View className="flex-row items-start justify-between gap-1">
+        <Text numberOfLines={1} adjustsFontSizeToFit className="flex-1 text-[18px] font-bold leading-6 text-ink">
+          {rule.pattern}
+        </Text>
+        <StarButton
+          starred={Boolean(rule.starredAt)}
+          size={26}
+          label={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
+          onPress={onToggleStar}
+        />
+      </View>
+      <Text numberOfLines={2} className="h-8 text-[12px] leading-4 text-ink-soft">
+        {meaningFor(rule, settings.meaningLanguage)}
+      </Text>
+      <Text className="font-display text-[10px] text-ink-muted">{rule.jlpt !== null ? `N${rule.jlpt}` : ''}</Text>
     </Pressable>
   );
 }

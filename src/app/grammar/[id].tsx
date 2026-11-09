@@ -24,25 +24,11 @@ import { isGrammarFunction } from '@/lib/categories';
 import { aiErrorMessage } from '@/lib/ai-errors';
 import { meaningFor, translationFor } from '@/lib/meaning';
 import { speakJapanese } from '@/lib/speech';
+import { highlightPattern } from '@/lib/grammar-highlight';
 import { useLayout } from '@/lib/layout';
 import { useSettings } from '@/state/settings';
 import { useSync } from '@/state/sync';
 import colors from '@/theme/colors';
-
-/**
- * Split a sentence so the grammar pattern can be highlighted: 〜ても → "ても".
- * Patterns like "〜ば／〜たら" use their first form.
- */
-function highlight(sentence: string, pattern: string): { text: string; match: boolean }[] {
-  const core = pattern.replace(/[〜～~]/g, '').split(/[／/、,]/)[0].trim();
-  const at = core ? sentence.indexOf(core) : -1;
-  if (at < 0) return [{ text: sentence, match: false }];
-  return [
-    { text: sentence.slice(0, at), match: false },
-    { text: core, match: true },
-    { text: sentence.slice(at + core.length), match: false },
-  ];
-}
 
 /** One grammar rule: meaning, how it attaches, explanation, and your example sentences. */
 export default function GrammarDetailScreen() {
@@ -204,7 +190,7 @@ export default function GrammarDetailScreen() {
             <View key={sentence.id} className="gap-1.5 rounded-2xl bg-surface-low p-3">
               <View className="flex-row items-start justify-between gap-2">
                 <Text className="flex-1 text-[17px] leading-7 text-ink">
-                  {highlight(sentence.ja, rule.pattern).map((part, i) => (
+                  {highlightPattern(sentence.ja, rule.pattern).map((part, i) => (
                     <Text key={i} className={part.match ? 'bg-primary-soft font-bold text-primary' : undefined}>
                       {part.text}
                     </Text>
@@ -227,7 +213,7 @@ export default function GrammarDetailScreen() {
             <View className="gap-2 rounded-2xl border border-primary/30 bg-primary-soft/40 p-3">
               <Pill label={t('grammarAi.new')} icon="auto-awesome" tone="primary" />
               <Text className="text-[17px] leading-7 text-ink">
-                {highlight(draft.ja, rule.pattern).map((part, i) => (
+                {highlightPattern(draft.ja, rule.pattern).map((part, i) => (
                   <Text key={i} className={part.match ? 'font-bold text-primary' : undefined}>
                     {part.text}
                   </Text>

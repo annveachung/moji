@@ -10,7 +10,7 @@ import { WalkingMascot } from '@/components/mascot';
 import { QuickAdd } from '@/components/quick-add';
 import { WordFilters } from '@/components/word-filters';
 import { LibraryCard, LibraryTile } from '@/components/library-card';
-import { ClearFilters, EmptyState, Icon, LabelButton, type IconName } from '@/components/ui';
+import { ClearFilters, EmptyState, Icon, LabelButton, ViewToggle, type IconName } from '@/components/ui';
 import {
   applyImport,
   getAllLibraryWords,
@@ -233,28 +233,5 @@ export default function LibraryScreen() {
         ListFooterComponent={words !== null && words.length > 0 ? <WalkingMascot /> : undefined}
       />
     </View>
-  );
-}
-
-function ViewToggle({
-  icon,
-  label,
-  selected,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      className={`rounded-lg p-1.5 shadow-sm ${selected ? 'bg-card shadow-ink/10' : 'shadow-transparent'}`}>
-      <Icon name={icon} size={18} color={selected ? colors.primary.DEFAULT : colors.ink.muted} />
-    </Pressable>
   );
 }

@@ -21,6 +21,11 @@ type GrammarRow = {
   category: GrammarRule['category'];
   starred_at: string | null;
   sentence_count: number;
+  example_id: number | null;
+  example_ja: string | null;
+  example_en: string | null;
+  example_zh: string | null;
+  example_source: GrammarSentence['source'] | null;
 };
 
 type SentenceRow = {
@@ -32,8 +37,13 @@ type SentenceRow = {
   source: GrammarSentence['source'];
 };
 
-const SELECT_RULE = `SELECT g.*, (SELECT COUNT(*) FROM grammar_sentences s WHERE s.grammar_id = g.id) AS sentence_count
-                       FROM grammar g`;
+/** Each rule with its number of sentences and the newest one (shown on its card). */
+const SELECT_RULE = `SELECT g.*, (SELECT COUNT(*) FROM grammar_sentences s WHERE s.grammar_id = g.id) AS sentence_count,
+                            e.id AS example_id, e.ja AS example_ja, e.en AS example_en, e.zh AS example_zh,
+                            e.source AS example_source
+                       FROM grammar g
+                       LEFT JOIN grammar_sentences e ON e.id = (
+                         SELECT id FROM grammar_sentences WHERE grammar_id = g.id ORDER BY created_at DESC, id DESC LIMIT 1)`;
 
 function toRule(row: GrammarRow): GrammarRule {
   return {
@@ -47,6 +57,17 @@ function toRule(row: GrammarRow): GrammarRule {
     explanation: row.explanation,
     starredAt: row.starred_at,
     sentenceCount: row.sentence_count,
+    example:
+      row.example_id !== null
+        ? {
+            id: row.example_id,
+            grammarId: row.id,
+            ja: row.example_ja ?? '',
+            en: row.example_en ?? '',
+            zh: row.example_zh ?? '',
+            source: row.example_source ?? 'import',
+          }
+        : null,
   };
 }
 
@@ -95,9 +116,9 @@ export async function setGrammarCategory(db: SQLiteDatabase, id: number, categor
   await markDirtyById(db, 'grammar', id);
 }
 
-/** Rules not sorted into a function yet, for the AI. */
+/** Your own rules not sorted into a function yet, for the AI (the shared list's その他 ones are sorted already). */
 export async function getUncategorizedGrammar(db: SQLiteDatabase): Promise<GrammarRule[]> {
-  const rows = await db.getAllAsync<GrammarRow>(`${SELECT_RULE} WHERE g.category IS NULL LIMIT 150`);
+  const rows = await db.getAllAsync<GrammarRow>(`${SELECT_RULE} WHERE g.category IS NULL AND g.is_custom = 1 LIMIT 150`);
   return rows.map(toRule);
 }
 
@@ -139,6 +160,8 @@ export async function saveGrammarSentence(
     `INSERT INTO grammar_sentences (grammar_id, ja, en, zh, source, uid) VALUES (?, ?, ?, ?, ?, ${NEW_UID})`,
     grammarId, sentence.ja, sentence.en, sentence.zh, source,
   );
+  // A rule from the shared list syncs once you add to it, so your other devices can attach the sentence.
+  await markDirtyById(db, 'grammar', grammarId);
   await markDirtyById(db, 'grammarSentence', result.lastInsertRowId);
 }
 

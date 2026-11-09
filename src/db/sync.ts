@@ -346,8 +346,8 @@ async function removeLocal(db: SQLiteDatabase, kind: SyncKind, uid: string) {
 
 // ── Sync bookkeeping ─────────────────────────────────────────
 
-/** cursor: your own data; dictionaryCursor: the shared dictionary; userId: who synced last. */
-type SyncStateKey = 'cursor' | 'dictionaryCursor' | 'userId';
+/** cursor: your own data; dictionaryCursor / grammarCursor: the shared lists; userId: who synced last. */
+type SyncStateKey = 'cursor' | 'dictionaryCursor' | 'grammarCursor' | 'userId';
 
 export async function getSyncState(db: SQLiteDatabase, key: SyncStateKey): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM sync_state WHERE key = ?', key);
@@ -373,12 +373,14 @@ export async function clearPersonalData(db: SQLiteDatabase) {
       DELETE FROM sentences WHERE uid IS NOT NULL;
       UPDATE sentences SET favorite = 0, seen = 0;
       DELETE FROM review_logs;
-      DELETE FROM grammar;
+      DELETE FROM grammar WHERE is_custom = 1;
+      UPDATE grammar SET starred_at = NULL;
+      DELETE FROM grammar_sentences WHERE uid IS NOT NULL;
       DELETE FROM topics;
       DELETE FROM seen;
       DELETE FROM outbox;
-      -- The shared dictionary is the same for everyone, so it isn't downloaded again.
-      DELETE FROM sync_state WHERE key != 'dictionaryCursor';
+      -- The shared lists are the same for everyone, so they aren't downloaded again.
+      DELETE FROM sync_state WHERE key NOT IN ('dictionaryCursor', 'grammarCursor');
     `);
   });
 }
