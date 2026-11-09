@@ -7,8 +7,9 @@ import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-na
 import { AppHeader } from '@/components/app-header';
 import { DailyReading } from '@/components/daily-reading';
 import { ImportSheet, type ImportReview } from '@/components/import-sheet';
-import { StarButton } from '@/components/mascot';
-import { Card, Chip, ClearFilters, EmptyState, Icon, IconButton, LabelButton, Pill, SectionHeader, ViewToggle, type IconName } from '@/components/ui';
+import { TagPill } from '@/components/library-card';
+import { Mascot, StarButton } from '@/components/mascot';
+import { Card, Chip, ClearFilters, EmptyState, Icon, IconButton, LabelButton, SectionHeader, TagRow, ViewToggle, type IconName } from '@/components/ui';
 import {
   applyGrammarImport,
   deleteGrammarSentence,
@@ -264,6 +265,8 @@ export default function GrammarScreen() {
                 onToggleStar={() => toggleStar(item)}
                 activeFn={fn}
                 onFn={pickFn}
+                activeLevel={level}
+                onLevel={(value) => setLevel(level === value ? null : value)}
                 regenerating={regenerating === item.id}
                 onRegenerate={() => regenerate(item)}
                 onRemoveExample={() => removeExample(item)}
@@ -276,12 +279,21 @@ export default function GrammarScreen() {
   );
 }
 
-/** One rule in the list view: pattern, level, ⭐, meaning, function, formation, and one example to listen to, swap or remove. */
+/** Read a pattern aloud without its 〜 and alternatives: ちゃいけない・じゃいけない → ちゃいけない. */
+const spokenPattern = (pattern: string) => pattern.replace(/[〜～~]/g, '').split(/[・／/]/)[0]!.trim();
+
+/**
+ * One rule in the list view, laid out like a word card: tags and ⭐ on top, the pattern with 🔊,
+ * then the meaning and one example (with ↻ and ✕). Every part has a fixed number of lines, so
+ * all cards are the same size.
+ */
 function GrammarCard({
   rule,
   onToggleStar,
   activeFn,
   onFn,
+  activeLevel,
+  onLevel,
   regenerating,
   onRegenerate,
   onRemoveExample,
@@ -291,6 +303,9 @@ function GrammarCard({
   activeFn: GrammarFunction | 'other' | null;
   /** Tap the function tag to show only that kind of pattern. */
   onFn: (fn: GrammarFunction | 'other') => void;
+  activeLevel: JlptLevel | null;
+  /** Tap the level tag to show only that level. */
+  onLevel: (level: JlptLevel) => void;
   regenerating: boolean;
   onRegenerate: () => void;
   onRemoveExample: () => void;
@@ -299,6 +314,7 @@ function GrammarCard({
   const { t } = useTranslation();
   const { settings } = useSettings();
   const example = rule.example;
+  const fn = rule.category ?? 'other';
 
   return (
     // A link, not a button: on the web a button can't hold the card's own buttons.
@@ -306,10 +322,14 @@ function GrammarCard({
       accessibilityRole="link"
       accessibilityLabel={rule.pattern}
       onPress={() => router.push({ pathname: '/grammar/[id]', params: { id: String(rule.id) } })}
-      className="gap-2 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
-      <View className="flex-row items-start justify-between gap-2">
-        <Text className="flex-1 text-[22px] font-bold leading-7 text-ink">{rule.pattern}</Text>
-        {rule.jlpt !== null ? <Pill label={`N${rule.jlpt}`} tone="mustard" /> : null}
+      className="gap-3 rounded-card bg-card p-4 shadow-md shadow-ink/10 active:opacity-80">
+      <View className="flex-row items-center justify-between gap-2">
+        <TagRow>
+          {rule.jlpt !== null ? (
+            <TagPill label={`N${rule.jlpt}`} tone="mustard" active={activeLevel === rule.jlpt} onPress={() => onLevel(rule.jlpt!)} />
+          ) : null}
+          <TagPill label={t(`grammarFn.${fn}`)} tone="outline" active={activeFn === fn} onPress={() => onFn(fn)} />
+        </TagRow>
         <StarButton
           starred={Boolean(rule.starredAt)}
           size={32}
@@ -317,49 +337,46 @@ function GrammarCard({
           onPress={onToggleStar}
         />
       </View>
-      <Text className="text-[15px] font-semibold leading-5 text-ink">{meaningFor(rule, settings.meaningLanguage)}</Text>
-      <View className="flex-row flex-wrap items-center gap-1.5">
-        {rule.category ? (
-          <Pressable accessibilityRole="button" hitSlop={4} onPress={() => onFn(rule.category!)}>
-            <Pill label={t(`grammarFn.${rule.category}`)} tone={activeFn === rule.category ? 'primary' : 'outline'} />
-          </Pressable>
-        ) : null}
-        {rule.formation ? (
-          <View className="rounded-lg bg-surface-low px-2.5 py-1">
-            <Text className="text-[12px] text-ink-soft">{rule.formation}</Text>
-          </View>
-        ) : null}
+
+      <View className="flex-row items-center justify-between gap-3">
+        <Text numberOfLines={1} adjustsFontSizeToFit className="flex-1 text-[28px] font-bold leading-9 text-ink">
+          {rule.pattern}
+        </Text>
+        <IconButton icon="volume-up" tone="quiet" label={t('word.listen')} onPress={() => speakJapanese(spokenPattern(rule.pattern))} />
       </View>
 
-      <View className="gap-1 rounded-xl bg-surface-low p-3">
-        {example ? (
-          <>
-            <Text className="text-[15px] leading-6 text-ink">
-              {highlightPattern(example.ja, rule.pattern).map((part, i) => (
-                <Text key={i} className={part.match ? 'font-bold text-primary' : undefined}>
-                  {part.text}
-                </Text>
-              ))}
+      <View className="gap-2 rounded-xl bg-surface-low p-3">
+        <Text numberOfLines={1} className="text-[15px] font-semibold leading-5 text-ink">
+          {meaningFor(rule, settings.meaningLanguage)}
+        </Text>
+        <View className="flex-row items-center gap-1 rounded-lg bg-card/80 py-2 pl-2.5 pr-1">
+          <View className="flex-1 gap-0.5">
+            <Text numberOfLines={1} className="text-[14px] leading-5 text-ink">
+              {example
+                ? highlightPattern(example.ja, rule.pattern).map((part, i) => (
+                    <Text key={i} className={part.match ? 'font-bold text-primary' : undefined}>
+                      {part.text}
+                    </Text>
+                  ))
+                : t('grammar.noExample')}
             </Text>
-            <Text className="text-[12px] leading-4 text-ink-soft">{translationFor(example, settings.meaningLanguage)}</Text>
-          </>
-        ) : (
-          <Text className="text-[12px] text-ink-muted">{t('grammar.noExample')}</Text>
-        )}
-        <View className="flex-row items-center justify-end gap-1">
+            <Text numberOfLines={1} className="text-[12px] leading-4 text-ink-soft">
+              {example ? translationFor(example, settings.meaningLanguage) : ' '}
+            </Text>
+          </View>
           {example ? (
-            <IconButton icon="volume-up" tone="quiet" size={30} label={t('word.listen')} onPress={() => speakJapanese(example.ja)} />
+            <IconButton icon="volume-up" tone="quiet" size={28} label={t('word.listen')} onPress={() => speakJapanese(example.ja)} />
           ) : null}
           <IconButton
             icon={regenerating ? 'hourglass-empty' : 'refresh'}
             tone="quiet"
-            size={30}
+            size={28}
             label={t('word.regenerate')}
             disabled={regenerating}
             onPress={onRegenerate}
           />
           {example ? (
-            <IconButton icon="close" tone="quiet" size={30} label={t('word.removeExample')} onPress={onRemoveExample} />
+            <IconButton icon="close" tone="quiet" size={28} label={t('word.removeExample')} onPress={onRemoveExample} />
           ) : null}
         </View>
       </View>
@@ -367,7 +384,7 @@ function GrammarCard({
   );
 }
 
-/** One rule in the compact grid: pattern, level, ⭐ and meaning. */
+/** One rule in the compact grid, like a word tile: the pattern with ⭐, and its meaning. */
 function GrammarTile({ rule, onToggleStar }: { rule: GrammarRule; onToggleStar: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -378,21 +395,23 @@ function GrammarTile({ rule, onToggleStar }: { rule: GrammarRule; onToggleStar: 
       accessibilityLabel={rule.pattern}
       onPress={() => router.push({ pathname: '/grammar/[id]', params: { id: String(rule.id) } })}
       className="flex-1 gap-1 rounded-2xl bg-card p-3 shadow-md shadow-ink/10 active:opacity-80">
-      <View className="flex-row items-start justify-between gap-1">
-        <Text numberOfLines={1} adjustsFontSizeToFit className="flex-1 text-[18px] font-bold leading-6 text-ink">
+      <View className="flex-row items-start justify-between">
+        <Text numberOfLines={1} adjustsFontSizeToFit className="flex-1 text-[22px] font-bold leading-[30px] text-ink">
           {rule.pattern}
         </Text>
-        <StarButton
-          starred={Boolean(rule.starredAt)}
-          size={26}
-          label={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
-          onPress={onToggleStar}
-        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={rule.starredAt ? t('grammar.unstar') : t('grammar.star')}
+          hitSlop={10}
+          onPress={onToggleStar}>
+          <Mascot size={20} tone={rule.starredAt ? 'color' : 'faded'} />
+        </Pressable>
       </View>
-      <Text numberOfLines={2} className="h-8 text-[12px] leading-4 text-ink-soft">
+      <Text numberOfLines={1} className="text-[12px] text-ink-soft">
         {meaningFor(rule, settings.meaningLanguage)}
       </Text>
-      <Text className="font-display text-[10px] text-ink-muted">{rule.jlpt !== null ? `N${rule.jlpt}` : ''}</Text>
+      {/* Same bottom space as a word tile, so the grids look alike. */}
+      <View className="mt-1 h-1" />
     </Pressable>
   );
 }
