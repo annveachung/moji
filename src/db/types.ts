@@ -161,6 +161,8 @@ export type GrammarRule = {
   starredAt: string | null;
   /** Number of example sentences saved for it. */
   sentenceCount: number;
+  /** The newest example, shown on its card. */
+  example: GrammarSentence | null;
 };
 
 export type GrammarSentence = {

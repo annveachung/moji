@@ -269,6 +269,30 @@ export function ClearFilters({ label, onPress }: { label: string; onPress: () =>
   );
 }
 
+/** One side of a list / grid switch: an icon, raised when picked. */
+export function ViewToggle({
+  icon,
+  label,
+  selected,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={`rounded-lg p-1.5 shadow-sm ${selected ? 'bg-card shadow-ink/10' : 'shadow-transparent'}`}>
+      <Icon name={icon} size={18} color={selected ? colors.primary.DEFAULT : colors.ink.muted} />
+    </Pressable>
+  );
+}
+
 /** Title row at the top of a card: a small colored bar, the title, and an optional right side. */
 export function SectionHeader({
   title,

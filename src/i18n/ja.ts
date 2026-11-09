@@ -328,6 +328,7 @@ const ja: typeof en = {
     formation: '接続',
     explanation: '説明',
     examples: '例文',
+    noExample: 'まだ例文がありません。↻ で作れます。',
     examplesEmpty: '例文はまだありません。',
     generate: 'AIで例文を作る',
     generateSoon: 'AIの準備ができたら、ここをタップすると、この文法を使った例文が作れます。気に入った例文は保存できます。',

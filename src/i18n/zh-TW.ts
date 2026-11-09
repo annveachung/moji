@@ -327,6 +327,7 @@ const zhTW: typeof en = {
     formation: '接續',
     explanation: '說明',
     examples: '例句',
+    noExample: '還沒有例句，點 ↻ 產生一個。',
     examplesEmpty: '還沒有例句。',
     generate: '用 AI 造句',
     generateSoon: '等 AI 設定好後，點這裡就能用這個文法造新例句，喜歡的可以存起來。',

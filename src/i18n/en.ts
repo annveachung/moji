@@ -324,6 +324,7 @@ const en = {
     formation: 'Formation',
     explanation: 'Explanation',
     examples: 'Example sentences',
+    noExample: 'No example yet. Tap ↻ for one.',
     examplesEmpty: 'No example sentences yet.',
     generate: 'Generate a sentence',
     generateSoon: 'Once AI is set up, tap here for a new example using this grammar, and save the ones you like.',

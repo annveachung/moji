@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
 
 import { applyDictionary, type DictionaryEntry } from '@/db/dictionary';
+import { applyGrammarDictionary, type GrammarEntry } from '@/db/grammar-dictionary';
 import {
   applyDownloaded,
   clearPersonalData,
@@ -105,6 +106,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         changed += await applyDictionary(db, page.entries);
         dictionaryCursor = page.cursor;
         await setSyncState(db, 'dictionaryCursor', dictionaryCursor);
+        if (!page.more) break;
+      }
+
+      // The shared grammar list, the same way.
+      let grammarCursor = (await getSyncState(db, 'grammarCursor')) ?? '0';
+      for (;;) {
+        const page = await apiFetch<{ entries: GrammarEntry[]; cursor: string; more: boolean }>(
+          `/grammar-dictionary?since=${grammarCursor}`,
+        );
+        changed += await applyGrammarDictionary(db, page.entries);
+        grammarCursor = page.cursor;
+        await setSyncState(db, 'grammarCursor', grammarCursor);
         if (!page.more) break;
       }
       if (changed > 0) setDataVersion((v) => v + 1);
