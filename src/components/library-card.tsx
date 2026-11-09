@@ -15,8 +15,8 @@ import { IconButton, Pill, TagRow, type PillTone } from './ui';
 
 type Props = { word: LibraryWord; onToggleStar: () => void };
 
-/** A pill you can tap to filter the library by that tag (tap again to clear it). */
-function TagPill({
+/** A pill you can tap to filter a list by that tag (tap again to clear it). */
+export function TagPill({
   label,
   tone,
   active,
