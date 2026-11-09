@@ -38,7 +38,7 @@ export default function GrammarDetailScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const layout = useLayout();
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
   const zh = settings.meaningLanguage === 'zh-TW';
   const [rule, setRule] = useState<GrammarRule | null | undefined>(undefined);
   const [sentences, setSentences] = useState<GrammarSentence[]>([]);
@@ -149,13 +149,6 @@ export default function GrammarDetailScreen() {
                   load();
                 }}
               />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => updateSettings({ meaningLanguage: zh ? 'en' : 'zh-TW' })}
-                className="flex-row items-center gap-1 rounded-full bg-surface-high px-3 py-1.5 active:bg-primary-soft">
-                <Icon name="translate" size={14} />
-                <Text className="font-display text-[12px] text-ink">{zh ? 'EN' : '中文'}</Text>
-              </Pressable>
             </View>
           </View>
           <Text className="text-center text-[36px] font-bold leading-[44px] text-ink">{rule.pattern}</Text>
